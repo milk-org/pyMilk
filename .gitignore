@@ -1,0 +1,12 @@
+# Python
+__pycache__
+
+# Eclipse
+.project
+.pydevproject
+
+# pip install
+/pyMilk.egg-info/
+
+# mypy stuff
+/.mypy_cache/
