@@ -64,7 +64,7 @@ with open("README.md", 'r') as f:
 
 setup(
         name = 'pyMilk',
-        version = '0.0.01',
+        version = '1.0',
         description = 'Python bindings and utilities to use with MILK and CACAO',
         long_description = long_description,
         author = 'Vincent Deo',
