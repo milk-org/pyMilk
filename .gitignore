@@ -10,3 +10,7 @@ __pycache__
 
 # mypy stuff
 /.mypy_cache/
+
+# Shared objects & setup.py build
+*.so
+build/

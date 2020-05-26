@@ -1,45 +1,62 @@
 # pyMilk
 
-pyMilk means to provide a user-side interaction mean to connect your python scripts to the shared memory structures used in Milk.  
+pyMilk means to provide a user-side interaction channel between your python scripts and the shared memory structures used in MILK.  
 It may also become our preferred repository for a variety of python modules relating to and interacting with the core features of MILK and CACAO.
 
 For interfacing with the MILK streams, we use a [pybind](https://github.com/pybind/pybind11) linking deployed with the C library [ImageStreamIO](https://github.com/milk-org/ImageStreamIO) (ISIO).  
-This binding, ImageStreamIOWrap (ISIOW), is not included here, but is embedded in the ISIO repository.
+
+ISIO, and the python wrapper, are included here as a submodule.
+All credit to **Arnaud Sevin** for ImageStreamIOWrap.cpp and various upgrades to ISIO.
 
 ## Dependencies
 
-To operate pyMilk using the ISIOW binding, you need to obtain and compile this binding.
-This is simply done by compiling ISIO with an additional flag `-Dpython_build=ON`.
+There are to ways to go: you already have a MILK install on the target computer, or not.  
+If you do have an existing MILK install, we're assuming you want to interact with streams from other sources than pyMilk.  
+The corresponding section guarantees compatibility.
 
-If you have the new [milk-package](https://github.com/milk-org/ImageStreamIO), you can just add this flag in the cmake line.
+### No existing milk install
 
-You'll need pybind to configure/compile:
-```bash
-pip install pybind11
+Clone the repo with ISIO as submodule
+```
+git clone https://github.com/milk-org/pyMilk --recurse-submodules
 ```
 
-The only extra step beyond the milk-package README is to add the ISIOW so file in the PYTHONPATH:
-```bash
-export PYTHONPATH=$MILK_INSTALLDIR/python:$PYTHONPATH
+Install pyMilk - We recommend a "developer mode" (`-e` flag) install that does not copy stuff in your python install. The source code actually used is the one in the pyMilk folder. If you intend to change python sources, that's way more convenient.
+
 ```
-
-All credit to *A. Sevin* for ImageStreamIOWrap.cpp.
-
-## Installation
-
-A setup.py file is included for convenience and replicability.  
-At the repository root, run:
-
-```bash
+cd pyMilk
 pip install -e .
 ```
-The `-e` flag will perform a symlink install rather than a copy install. This way, you can develop in the repository and have your changes reflected at once.
+
+### You already have milk somewhere
+
+This is just a suggestion - you may do otherwise.  
+
+```
+git clone https://github.com/milk-org/pyMilk --recurse-submodules
+```
+
+Check the version of ISIO in `$MILK_ROOT/src/ImageStreamIO/ImageStruct.h` and checkout the corresponding pyMilk tag.
+If you have the latest ISIO version, you can remain on the master branch head. E.g.:
+```
+cd pyMilk
+git checkout v0.0.01
+git submodule update
+```
+and install
+```
+pip install -e .
+```
+
+NOTE: to avoid source duplication, or if doing active development, you may simply not init the submodule and replace it with a symlink to your existing `$MILK_ROOT/src/ImageStreamIO`.
+
+
 
 ## Usage
 
 At this early step, we chose to replicate the interface of the purely-python [xaosim.shmlib](https://github.com/fmartinache/xaosim) stream binding.  
 This way, we provide a one-on-one template for collaborators who are already using the `xaosim` solution for connecting with streams.  
-All credit to *F. Martinache* for defining these interfaces, and for lots of code/documentation copy-pasted into `pyMilk.interfacing.isio_shmlib`.
+All credit to **Frantz Martinache** for defining these interfaces, and for lots of code/documentation copy-pasted into `pyMilk.interfacing.isio_shmlib`.
 
 For those who have pre-existing scripts:
 
@@ -88,18 +105,23 @@ shm_wr = SHM('shm_name', ((30,30), np.int16), ...)
 
 ## Technical notes
 
-### NotImplementeds
+### NotImplemented.s
 
 At this point, we're not able to support all the features provided by `xaosim`, and therefore a lot of functions are *here* but are *empty*.  
 This includes everything related to keyword writing. Keyword reading is supported but unclean.
 
 This will evolve with the feedback of our endeared collaborators regarding what is expected from ISIO(W).
 
+### Contribution
+
+Contributors are welcome to add python contributions, or if they feel up to it, to dig into ISIOW.  
+Useful python contributions to the interface will be ported deeper into the C for speed and reliability.
+
 
 ### Data ordering
 
-Data ordering is column-major by default upon read-write.  
-A symcode parameter enable to switch through all transposed-flipped representations of rectangular images.  
+Data ordering is **column-major** by default upon read-write.  
+A **symcode** parameter enables to switch through all transposed-flipped representations of rectangular images.  
 The default is 4 as to provide retro-compatibility. We lack, at this point, the adequate compatibility with the fits files.
 
 We hope to be properly dealing with data-ordering at the scale of MILK at some point in the future.
