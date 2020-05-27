@@ -221,6 +221,7 @@ class SHM:
             sleepT: float = 0.001,
             timeout: float = 5.,
             copy: bool = True,
+            checkSemAndFlush: bool = True,
     ) -> np.ndarray:
         '''
         Reads and returns the data part of the SHM file
@@ -236,9 +237,10 @@ class SHM:
             TBC upon user testing.
         '''
         if check:
-            # Check, flush, and wait the semaphore
-            self._checkGrabSemaphore()
-            self.IMAGE.semflush(self.semID)
+            if checkSemAndFlush: # For irregular operations - we want to bypass this in multi_recv_data
+                # Check, flush, and wait the semaphore
+                self._checkGrabSemaphore()
+                self.IMAGE.semflush(self.semID)
             if timeout is None or timeout <= 0:
                 self.IMAGE.semwait(self.semID)
             else:
@@ -380,9 +382,9 @@ class SHM:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
             if outputFormat == 0:
-                OUT.append(self.get_data(check=True))
+                OUT.append(self.get_data(check=True, checkSemAndFlush = False))
             else:
-                OUT[k] = self.get_data(check=True, copy=self.location >= 0)
+                OUT[k] = self.get_data(check=True, copy=self.location >= 0, checkSemAndFlush = False)
             if monitorCount:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
