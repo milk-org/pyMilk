@@ -147,6 +147,9 @@ class SHM:
                 print(f"{self.FNAME}.im.shm will be overwritten")
                 # _checkExist opened the image, we can destroy.
                 self.IMAGE.destroy()
+                # Sleep 1/10th of a second - convenience to let streamCTRL re-scan (20 Hz) and detect the destruction
+                # before re-creating with the same name - but not the same ID.
+                time.sleep(.1)
 
             self.IMAGE.create(self.FNAME, data, location=location,
                               shared=shared, NBkw=nbkw)
@@ -168,6 +171,7 @@ class SHM:
             self.shape = self.shape_c
 
         if len(self.shape) >= 2 and self.symcode >= 4:  # We need a transpose
+            # Transpose is done on HEADING dims... this may be a compatibility problem
             self.shape = (self.shape[1], self.shape[0], *self.shape[2:])
 
     def rename_img(self, newname: str) -> None:
@@ -251,15 +255,21 @@ class SHM:
 
         if self.location >= 0:
             if copy:
-                return symcode_encode(self.IMAGE.copy()[self.readSlice],
-                                      self.symcode)
+                if len(self.shape) == 2:
+                    return symcode_encode(self.IMAGE.copy()[self.readSlice],
+                                          self.symcode)
+                else:
+                    return self.IMAGE.copy()[self.readSlice]
             else:
                 raise AssertionError('copy=False not allowed on GPU.')
         else:
             # This syntax is only allowed on CPU
-            return symcode_encode(
-                    np.array(self.IMAGE, copy=copy)[self.readSlice],
-                    self.symcode)
+            if len(self.shape) == 2:
+                return symcode_encode(
+                        np.array(self.IMAGE, copy=copy)[self.readSlice],
+                        self.symcode)
+            else:
+                return np.array(self.IMAGE, copy=copy)[self.readSlice]
 
     def set_data(self, data: np.ndarray, check_dt: bool = False) -> None:
         '''
@@ -276,7 +286,10 @@ class SHM:
         # SHM is actually a scalar, autosqueezed to 0 dimensions.
         if len(self.shape) == 0:
             data = np.array(data)  # A scalar array with () shape
-        self.IMAGE.write(symcode_decode(data[self.writeSlice], self.symcode))
+        if len(self.shape) == 2:
+            self.IMAGE.write(symcode_decode(data[self.writeSlice], self.symcode))
+        else:
+            self.IMAGE.write(data[self.writeSlice])
 
     def save_as_fits(self, fitsname: str) -> int:
         '''

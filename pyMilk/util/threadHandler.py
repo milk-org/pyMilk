@@ -19,7 +19,7 @@ class ThreadHandler:
         ----------
     '''
 
-    def __init__(self, sleep_ms: float = 10) -> None:
+    def __init__(self, sleep_ms: float = 10, daemonize: bool= True) -> None:
 
         self._t_pauseSleepMs = sleep_ms
         self._t_threadSuspend = True
@@ -27,16 +27,16 @@ class ThreadHandler:
 
         self.thread = None  # type: Thread
 
-        self._t_initThread()
+        self._t_initThread(daemonize)
 
-    def _t_initThread(self) -> None:
+    def _t_initThread(self, daemonize) -> None:
         try:
             self.thread.join()
         except:
             pass
         self.thread = Thread(target=self._t_runThread)
-        self.thread.setDaemon(True)
         self.thread.start()
+        self.thread.setDaemon(daemonize)
 
     def threadPause(self) -> None:
         self._t_threadSuspend = True
