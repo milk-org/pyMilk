@@ -1,4 +1,4 @@
-'''
+"""
 isio_shmlib.py
 
 Author: V. Deo
@@ -55,42 +55,52 @@ Credit for the ideas, templates, docstrings, and xaosim.shmlib:
 Credit for ImageStreamIO C library: O. Guyon
 
 Credit for ImageStreamIOWrap pybind interface: A. Sevin
-'''
+"""
 
 try:
     try:  # First shot
         from ImageStreamIOWrap import Image, Image_kw
     except:  # Second shot - maybe you forgot the default path ?
         import sys
-        sys.path.append('/usr/local/python')
+
+        sys.path.append("/usr/local/python")
         from ImageStreamIOWrap import Image, Image_kw
 except:
-    print('pyMilk.interfacing.isio_shmlib:')
-    print('WARNING: did not find ImageStreamIOWrap. Compile or path issues ?')
+    print("pyMilk.interfacing.isio_shmlib:")
+    print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
 
 from typing import Union, Tuple, List
 import numpy as np
 import time
 
-from pyMilk.util.symcode import symcode_encode, symcode_decode
+from pyMilk.util import img_shapes
 
 import os
 
 
 class SHM:
-    '''
+    """
         Main interfacing class
-    '''
+    """
 
     #############################################################
     # CORE COMPATIBILITY WITH xaosim.shmlib
     #############################################################
 
-    def __init__(self, fname: str, data: np.ndarray = None, nbkw: int = 0,
-                 shared: bool = True, location: int = -1,
-                 verbose: bool = False, packed=False, autoSqueeze: bool = True,
-                 symcode: int = 4) -> None:
-        '''
+    def __init__(
+            self,
+            fname: str,
+            data: np.ndarray = None,
+            nbkw: int = 0,
+            shared: bool = True,
+            location: int = -1,
+            verbose: bool = False,
+            packed=False,
+            autoSqueeze: bool = True,
+            symcode: int = 4,
+            triDim: int = img_shapes.Which3DState.LAST2LAST,
+    ) -> None:
+        """
         Constructor for a SHM (shared memory) object.
 
         Parameters:
@@ -100,13 +110,30 @@ class SHM:
         data: a numpy array (1, 2 or 3D of data)
                 alternatively, a tuple ((int, ...), dtype) is accepted
                     which provides shape and datatype (string or np type)
+
+            WARNING: if data is None, we're reading
+                     the userside shape will be found from the C-side shape, the symcode, and the triDim
+                     BUT
+                     if data isnt None and we're creating - data.shape should be the python shape -- not the c-shape
+                     in that case, the C-shape must be found from data.shape
+
         nbkw: # of keywords to be appended to the data structure (optional)
         shared: True if the memory is shared among users
         location: -1 for CPU RAM, >= 0 provides the # of the GPU.
+        
         autoSqueeze: Remove singleton dimensions between C-side and user side
                      Otherwise, we take the necessary steps to squeeze / pad the singleton dimensions.
                  Warning: [data not None] assumes [autoSqueeze=False].
                      If you're creating a SHM, it's assumed you know what you're passing.
+        symcode: symmetry to apply to the data - see pyMilk.util.symcode
+        triDim: what to do with tri-dimensional arrays. See util.symcode.
+
+
+        NOTE:
+            The order of operations on read is
+                squeeze -> 3D swap -> symcode
+            And on write
+                symcode -> 3D swap -> unsqueeze
 
         Depending on whether the file already exists, and/or some new
         data is provided, the file will be created or overwritten.
@@ -117,29 +144,37 @@ class SHM:
             (this is handled as a compilation flag in ImageStreamIO)
 
             arguments shared and location added.
-        '''
+        """
 
         self.IMAGE = Image()
         self.FNAME = _checkSHMName(fname)
 
         self.semID = None  # type: int
         self.location = location
-        self.symcode = symcode  # Handle image symetries; 0-7, see pyMilk.util.symcode
+        self.symcode = (
+                symcode  # Handle image symetries; 0-7, see pyMilk.util.img_shapes
+        )
+        self.triDimState = triDim
 
         # Image opening for reading
-        if data is None:
+        isCreating = data is not None
+        if not isCreating:
             if not self._checkExists():
                 raise FileNotFoundError(
-                        f'Requested SHM {fname} does not exist')
+                        f"Requested SHM {fname} does not exist")
             # _checkExists already performed the self.IMAGE.open()
 
             self._checkGrabSemaphore()
+            data = self.IMAGE.copy()  # Data is C-side shaped
 
-        # Image creation or re-write
+            self._init_internals_read(data, autoSqueeze)
         else:
             if not isinstance(data, np.ndarray):
                 # data is (Shape, type) tuple
-                data = np.empty(data[0], dtype=data[1])
+                data = np.empty(data[0],
+                                dtype=data[1])  # Data is Py-side shaped
+
+            data_c = self._init_internals_creation(data)
 
             if not self._checkExists():
                 print(f"{self.FNAME}.im.shm will be created")
@@ -149,38 +184,89 @@ class SHM:
                 self.IMAGE.destroy()
                 # Sleep 1/10th of a second - convenience to let streamCTRL re-scan (20 Hz) and detect the destruction
                 # before re-creating with the same name - but not the same ID.
-                time.sleep(.1)
+                time.sleep(0.1)
 
-            self.IMAGE.create(self.FNAME, data, location=location,
+            self.IMAGE.create(self.FNAME, data_c, location=location,
                               shared=shared, NBkw=nbkw)
 
-        dataTmp = self.IMAGE.copy()
-        self.nptype = dataTmp.dtype
-        self.shape_c = dataTmp.shape
+    def _init_internals_read(self, data: np.ndarray, autoSqueeze: bool):
+        """
+            Aux function for initializing
+            data is C-side shape
 
-        # Array slices for read/write (autoSqueeze argument)
-        self.readSlice = np.s_[...]
-        self.writeSlice = np.s_[...]
+            Must assign
+                self.nptype
+                self.nDim
+                self.shape_c
+                self.shape
+        """
+
+        self.nptype = data.dtype
+        self.shape_c = data.shape
+
+        # Autosqueeze
         if autoSqueeze:
-            self.shape = np.squeeze(dataTmp).shape
-            self.readSlice = tuple((slice(None, None, None), 0)[n == 1]
-                                   for n in self.shape_c)
-            self.writeSlice = tuple((slice(None, None, None), None)[n == 1]
-                                    for n in self.shape_c)
+            self.shape = np.squeeze(data).shape
         else:
             self.shape = self.shape_c
 
-        if len(self.shape) >= 2 and self.symcode >= 4:  # We need a transpose
-            # Transpose is done on HEADING dims... this may be a compatibility problem
-            self.shape = (self.shape[1], self.shape[0], *self.shape[2:])
+        self.readSlice, self.writeSlice = img_shapes.gen_squeeze_unsqueeze_slices(
+                self.shape_c, autoSqueeze)
+
+        # Quick ref
+        self.nDim = len(self.shape)
+
+        # 3D ordering
+        if self.nDim == 2:
+            self.shape = img_shapes.image_decode(data[self.readSlice],
+                                                 self.symcode).shape
+        elif self.nDim == 3:
+            self.shape = img_shapes.full_cube_decode(data[self.readSlice],
+                                                     self.symcode,
+                                                     self.triDimState).shape
+
+    def _init_internals_creation(self, data):
+        """
+            Aux function for initializing
+            data is python-side shape
+
+            Must assign
+                self.nptype
+                self.nDim
+                self.shape_c
+                self.shape
+        """
+
+        self.nptype = data.dtype
+        self.shape = data.shape
+        self.nDim = len(self.shape)
+
+        # Autosqueeze
+        if 1 in self.shape:
+            print("Warning: ignoring autoSqueeze parameter when creating SHM."
+                  "Remove the singleton dimensions yourself.")
+
+        self.readSlice, self.writeSlice = img_shapes.gen_squeeze_unsqueeze_slices(
+                self.shape, False)  # Trivial slices - no squeezing anyway
+
+        if self.nDim <= 1:
+            data_c = data  # Starting point
+        elif self.nDim == 2:
+            data_c = img_shapes.image_encode(data, self.symcode)
+        elif self.nDim == 3:
+            data_c = img_shapes.full_cube_encode(data, self.symcode,
+                                                 self.triDimState)
+
+        self.shape_c = data_c.shape
+        return data_c
 
     def rename_img(self, newname: str) -> None:
         raise NotImplementedError()
 
     def close(self) -> None:
-        '''
+        """
         Clean close of a SHM data structure link
-        '''
+        """
         self.IMAGE.close()
 
     def read_meta_data(self, verbose: bool = True) -> None:
@@ -223,25 +309,28 @@ class SHM:
             check: bool = False,
             reform: bool = True,
             sleepT: float = 0.001,
-            timeout: float = 5.,
+            timeout: float = 5.0,
             copy: bool = True,
             checkSemAndFlush: bool = True,
     ) -> np.ndarray:
-        '''
+        """
         Reads and returns the data part of the SHM file
         Parameters:
         ----------
         - check: boolean (integer supported); if not False, waits image update
         - copy: boolean, if False returns a np.array pointing to the shm, not a copy.
+        - checkSemAndFlush: flush the semaphore to 0, to guarantee SHM
+                            was written after this function was called
 
         CHANGES from xaosim:
-            reform, timeout not implemented
-            For reform: use the symcode constructor argument (see pyMilk.util.symcode for more info)
-            sleepT not useful as we use semaphore waiting now.
-            TBC upon user testing.
-        '''
+            reform, sleepT not implemented
+            - reform: use the symcode, autoSqueeze, and triDim constructor arguments (see pyMilk.util.img_shapes for more info)
+            - sleepT not useful as we use semaphore waiting now.
+        """
         if check:
-            if checkSemAndFlush: # For irregular operations - we want to bypass this in multi_recv_data
+            if (
+                    checkSemAndFlush
+            ):  # For irregular operations - we want to bypass this in multi_recv_data
                 # Check, flush, and wait the semaphore
                 self._checkGrabSemaphore()
                 self.IMAGE.semflush(self.semID)
@@ -250,60 +339,82 @@ class SHM:
             else:
                 err = self.IMAGE.semtimedwait(self.semID, timeout)
                 if err != 0:
-                    print('Warning - isio_shmlib.SHM.get_data has timed out and returned old data.'
+                    print("Warning - isio_shmlib.SHM.get_data has timed out and returned old data."
                           )
 
         if self.location >= 0:
             if copy:
-                if len(self.shape) == 2:
-                    return symcode_encode(self.IMAGE.copy()[self.readSlice],
-                                          self.symcode)
+                if self.nDim == 2:
+                    return img_shapes.image_decode(
+                            self.IMAGE.copy()[self.readSlice], self.symcode)
+                elif self.nDim == 3:
+                    return img_shapes.full_cube_decode(
+                            self.IMAGE.copy()[self.readSlice],
+                            self.symcode,
+                            self.triDimState,
+                    )
                 else:
                     return self.IMAGE.copy()[self.readSlice]
             else:
-                raise AssertionError('copy=False not allowed on GPU.')
+                raise AssertionError("copy=False not allowed on GPU.")
         else:
-            # This syntax is only allowed on CPU
-            if len(self.shape) == 2:
-                return symcode_encode(
+            # This syntax is only allowed on CPU - segfaults if loc > 0
+            if self.nDim == 2:
+                return img_shapes.image_decode(
                         np.array(self.IMAGE, copy=copy)[self.readSlice],
                         self.symcode)
+            elif self.nDim == 3:
+                return img_shapes.full_cube_decode(
+                        np.array(self.IMAGE, copy=copy)[self.readSlice],
+                        self.symcode,
+                        self.triDimState,
+                )
             else:
                 return np.array(self.IMAGE, copy=copy)[self.readSlice]
 
     def set_data(self, data: np.ndarray, check_dt: bool = False) -> None:
-        '''
+        """
         Upload new data to the SHM file.
         Parameters:
         ----------
         - data: the array to upload to SHM
         - check_dt: boolean (default: false) recasts data
-        '''
+        """
         if check_dt:
             data = data.astype(self.nptype)
 
         # Handling very specific cases
         # SHM is actually a scalar, autosqueezed to 0 dimensions.
-        if len(self.shape) == 0:
+        if self.isScalar:
             data = np.array(data)  # A scalar array with () shape
-        if len(self.shape) == 2:
-            self.IMAGE.write(symcode_decode(data[self.writeSlice], self.symcode))
+
+        if self.nDim == 2:
+            self.IMAGE.write(
+                    img_shapes.image_encode(data,
+                                            self.symcode)[self.writeSlice])
+        elif self.nDim == 3:
+            self.IMAGE.write(
+                    img_shapes.full_cube_encode(
+                            data, self.symcode,
+                            self.triDimState)[self.writeSlice])
         else:
             self.IMAGE.write(data[self.writeSlice])
 
     def save_as_fits(self, fitsname: str) -> int:
-        '''
+        """
         Convenient sometimes, to be able to export the data as a fits file.
 
         Parameters:
         ----------
         - fitsname: a filename (overwrite=True)
-        '''
+        """
         try:
             import astropy.io.fits as pf  # type: ignore
+
             pf.writeto(fitsname, self.get_data(), overwrite=True)
         except:
             import pyfits as pf  # type: ignore
+
             pf.writeto(fitsname, self.get_data(), clobber=True)
         return 0
 
@@ -312,29 +423,33 @@ class SHM:
     #############################################################
 
     def get_expt(self) -> float:
-        '''
+        """
         Returns exposure time (sec)
-        '''
-        return self.keywords['tint'].value
+        """
+        return self.keywords["tint"].value
 
     def get_fps(self) -> float:
-        '''
+        """
         Returns framerate (Hz)
-        '''
-        return self.keywords['fps'].value
+        """
+        return self.keywords["fps"].value
 
     def get_ndr(self) -> int:
-        '''
+        """
         Returns NDR status
-        '''
-        return self.keywords['NDR'].value
+        """
+        return self.keywords["NDR"].value
 
     def get_crop(self) -> Tuple[int, int, int, int]:
-        '''
+        """
         Return image crop boundaries
-        '''
-        return (self.keywords['x0'].value, self.keywords['x1'].value,
-                self.keywords['y0'].value, self.keywords['y1'].value)
+        """
+        return (
+                self.keywords["x0"].value,
+                self.keywords["x1"].value,
+                self.keywords["y0"].value,
+                self.keywords["y1"].value,
+        )
 
     #############################################################
     # ADDITIONAL FEATURES - NOT SUPPORTED BY xaosim shm STRUCTURE
@@ -344,29 +459,29 @@ class SHM:
     keywords = property(lambda x: x.IMAGE.kw, None)
 
     def _checkExists(self) -> bool:
-        '''
+        """
         Check if the requeste SHM file is already allocated
         This is called by the constructor when built for writing.
 
         Returns True if file exists.
-        '''
+        """
         retcode = self.IMAGE.open(self.FNAME)
         return retcode == 0
 
     def _checkGrabSemaphore(self) -> None:
-        '''
+        """
         Called by constructor in read mode
         Called by synchronous receive functions
 
         Sets, and returns, semaphore ID
-        '''
+        """
         if self.semID is None:
             self.semID = self.IMAGE.getsemwaitindex(0)
 
     def multi_recv_data(self, n: int, outputFormat: int = 0,
                         monitorCount: bool = False
                         ) -> Union[List[np.ndarray], np.ndarray]:
-        '''
+        """
         Synchronous read of n successive images in a stream.
 
         Parameters:
@@ -376,7 +491,7 @@ class SHM:
                         0 for List[np.ndarray]
                         1 for aggregated np.ndarray
         - monitorSem: Monitor and report the counter states when ready to receive - WIP
-        '''
+        """
         # Prep output
         if outputFormat == 0:
             OUT = []  # type: Union[np.ndarray, List[np.ndarray]]
@@ -395,9 +510,10 @@ class SHM:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
             if outputFormat == 0:
-                OUT.append(self.get_data(check=True, checkSemAndFlush = False))
+                OUT.append(self.get_data(check=True, checkSemAndFlush=False))
             else:
-                OUT[k] = self.get_data(check=True, copy=self.location >= 0, checkSemAndFlush = False)
+                OUT[k] = self.get_data(check=True, copy=self.location >= 0,
+                                       checkSemAndFlush=False)
             if monitorCount:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
@@ -406,16 +522,16 @@ class SHM:
             p1, p2 = np.sum(x < 1, axis=1), np.sum(x > 1, axis=1)
             y = countValues[1] - countValues[0]
             p3, p4 = np.sum(y < 1), np.sum(y > 1)
-            print(f'Irregularities:')
-            print(f'{p1[0]} < 1, {p1[1]} > 1 deltas in pre.')
-            print(f'{p2[0]} < 1, {p2[1]} > 1 deltas in post.')
-            print(f'{p3} < 1, {p4} > 1 pre/post diff.')
+            print(f"Irregularities:")
+            print(f"{p1[0]} < 1, {p1[1]} > 1 deltas in pre.")
+            print(f"{p2[0]} < 1, {p2[1]} > 1 deltas in post.")
+            print(f"{p3} < 1, {p4} > 1 pre/post diff.")
 
         return OUT
 
 
 def _checkSHMName(fname):
-    '''
+    """
     Check if the name provided in the constructor is
     - a string in ISIO style
     - a full path + filename + in.shm in xaosim style
@@ -430,31 +546,31 @@ def _checkSHMName(fname):
     Errors if it's a path-like name that
     1 / does not fit in $MILK_SHM_DIR
     2 / does not end with .im.shm
-    '''
-    if not '/' in fname:  # filename only
-        if fname.endswith('.im.shm'):
+    """
+    if not "/" in fname:  # filename only
+        if fname.endswith(".im.shm"):
             return fname[:-7]
         else:
             return fname
 
     # It has slashes
     pre, end = os.path.split(fname)
-    milk_shm_dir = os.environ['MILK_SHM_DIR']
+    milk_shm_dir = os.environ["MILK_SHM_DIR"]
 
     # Third condition is for future use if we allow subdirs
     if not pre.startswith(milk_shm_dir) or (len(pre) > len(milk_shm_dir) and
-                                            pre[len(milk_shm_dir)] != '/'):
+                                            pre[len(milk_shm_dir)] != "/"):
         raise ValueError(
-                f'Only files in MILK_SHR_DIR ({milk_shm_dir}) are supported')
+                f"Only files in MILK_SHR_DIR ({milk_shm_dir}) are supported")
 
     # Do we need to make folders ? We can't... maybe some day
-    if '/' in pre[len(milk_shm_dir):]:
+    if "/" in pre[len(milk_shm_dir):]:
         raise ValueError(
-                f'Only files at the root of MILK_SHR_DIR ({milk_shm_dir}) are supported'
+                f"Only files at the root of MILK_SHR_DIR ({milk_shm_dir}) are supported"
         )
 
     # OK we're good, just filter the extension
-    if end.endswith('.im.shm'):
+    if end.endswith(".im.shm"):
         return end[:-7]
     else:
         return end

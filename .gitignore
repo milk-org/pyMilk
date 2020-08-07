@@ -14,3 +14,4 @@ __pycache__
 # Shared objects & setup.py build
 *.so
 build/
+.vscode
