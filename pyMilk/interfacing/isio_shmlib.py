@@ -385,7 +385,7 @@ class SHM:
 
         # Handling very specific cases
         # SHM is actually a scalar, autosqueezed to 0 dimensions.
-        if self.isScalar:
+        if self.nDim == 0:
             data = np.array(data)  # A scalar array with () shape
 
         if self.nDim == 2:
