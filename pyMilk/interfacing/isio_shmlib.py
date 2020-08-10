@@ -69,7 +69,7 @@ except:
     print("pyMilk.interfacing.isio_shmlib:")
     print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
 
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Dict
 import numpy as np
 import time
 
@@ -120,7 +120,7 @@ class SHM:
         nbkw: # of keywords to be appended to the data structure (optional)
         shared: True if the memory is shared among users
         location: -1 for CPU RAM, >= 0 provides the # of the GPU.
-        
+
         autoSqueeze: Remove singleton dimensions between C-side and user side
                      Otherwise, we take the necessary steps to squeeze / pad the singleton dimensions.
                  Warning: [data not None] assumes [autoSqueeze=False].
@@ -270,27 +270,87 @@ class SHM:
         self.IMAGE.close()
 
     def read_meta_data(self, verbose: bool = True) -> None:
+        '''
+            Only for xaosim retro-compatibility
+        '''
         if verbose:
             self.print_meta_data()
 
     def create_keyword_list(self) -> None:
-        raise NotImplementedError()
+        raise DeprecationWarning(
+                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+        )
 
     def read_keywords(self) -> None:
-        raise NotImplementedError()
+        raise DeprecationWarning(
+                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+        )
 
     def write_keywords(self) -> None:
-        raise NotImplementedError()
+        raise DeprecationWarning(
+                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+        )
 
     def read_keyword(self, ii: int) -> None:
-        raise NotImplementedError()
-
-    def update_keyword(self, ii: int, name: str, value: Union[int, str, float],
-                       comment: str) -> None:
-        raise NotImplementedError()
+        raise DeprecationWarning(
+                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+        )
 
     def write_keyword(self, ii: int) -> None:
-        raise NotImplementedError()
+        raise DeprecationWarning(
+                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+        )
+
+    def update_keyword(self, name: str, value: Union[int, str, float],
+                       comment: str = '') -> None:
+        '''
+        Mind the signature change from xaosim: ii (kw index) is not used.
+        '''
+        kws = self.IMAGE.get_kws()
+        if name not in kws:
+            raise AssertionError('Updating a keyword that does not exist yet.')
+        kws[name] = Image_kw(name, value, comment)
+        self.IMAGE.set_kws(kws)
+
+    def set_keywords(self, kw_dict: Dict[str, None]):
+        '''
+        Sets a keyword dictionnary into the SHM
+        This is a complete write - it erases pre-existing keywords
+
+        kw_dict: {key: value}, {key: (value,)} and {key: (value, comment)} are all accepted
+        '''
+        kws = {}
+        for name in kw_dict:
+            if not isinstance(kw_dict[name], tuple):
+                v = kw_dict[name]
+                c = ''
+            elif len(kw_dict[name]) == 1:
+                v = kw_dict[name][0]
+                c = ''
+            else:
+                v = kw_dict[name][0]
+                c = kw_dict[name][1]
+            kws[name] = Image_kw(name, v, c)
+
+        self.IMAGE.set_kws(kws)
+
+    def get_keywords(self, comments=False):
+        '''
+        Return the keyword dictionary from the SHM
+
+        Will return {name: value} if comments is False
+        Will return {name: (value, comments)} if comments is True
+        '''
+
+        kws = self.IMAGE.get_kws()
+        kws_ret = {}
+        for name in kws:
+            if comments:
+                kws_ret[name] = (kws[name].value, kws[name].comment)
+            else:
+                kws_ret[name] = kws[name].value
+
+        return kws_ret
 
     def print_meta_data(self) -> None:
         print(self.IMAGE.md)
@@ -426,29 +486,29 @@ class SHM:
         """
         Returns exposure time (sec)
         """
-        return self.keywords["tint"].value
+        return self.get_keywords()["tint"]
 
     def get_fps(self) -> float:
         """
         Returns framerate (Hz)
         """
-        return self.keywords["fps"].value
+        return self.get_keywords()["fps"]
 
     def get_ndr(self) -> int:
         """
         Returns NDR status
         """
-        return self.keywords["NDR"].value
+        return self.get_keywords()["NDR"]
 
     def get_crop(self) -> Tuple[int, int, int, int]:
         """
         Return image crop boundaries
         """
         return (
-                self.keywords["x0"].value,
-                self.keywords["x1"].value,
-                self.keywords["y0"].value,
-                self.keywords["y1"].value,
+                self.get_keywords()["x0"],
+                self.get_keywords()["x1"],
+                self.get_keywords()["y0"],
+                self.get_keywords()["y1"],
         )
 
     #############################################################
