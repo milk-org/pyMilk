@@ -74,5 +74,5 @@ setup(
         install_requires = ['docopt', 'pyqtgraph', 'pybind11', 'numpy'],
         ext_modules = [CMakeExtension('ImageStreamIO')],
         cmdclass = dict(build_ext = CMakeBuild),
-        scripts = ['pyMilk/visual/shmPlot.py', 'pyMilk/visual/shmImshow.py'])
+        scripts = ['pyMilk/visual/shmPlot.py', 'pyMilk/visual/shmImshow.py', 'pyMilk/util/monStream.py'])
 

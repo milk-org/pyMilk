@@ -596,7 +596,7 @@ class SHM:
         if self.semID is None:
             self.semID = self.IMAGE.getsemwaitindex(0)
 
-    def multi_recv_data(self, n: int, outputFormat: int = 0,
+    def multi_recv_data(self, n: int, outputFormat: int = 1,
                         monitorCount: bool = False
                         ) -> Union[List[np.ndarray], np.ndarray]:
         """
@@ -606,6 +606,7 @@ class SHM:
         ----------
         - n: number of frames to read and return
         - outputFormat: flag to indicate what is desired
+                       -1 for None - debug - no frame copy
                         0 for List[np.ndarray]
                         1 for aggregated np.ndarray
         - monitorSem: Monitor and report the counter states when ready to receive - WIP
@@ -613,8 +614,10 @@ class SHM:
         # Prep output
         if outputFormat == 0:
             OUT = []  # type: Union[np.ndarray, List[np.ndarray]]
-        else:
+        elif outputFormat == 1:
             OUT = np.zeros((n, *self.shape), dtype=self.nptype)
+        elif outputFormat == -1:
+            OUT = None
 
         if monitorCount:
             countValues = np.zeros((2, n), dtype=np.uint64)
@@ -628,10 +631,12 @@ class SHM:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
             if outputFormat == 0:
-                OUT.append(self.get_data(check=True, checkSemAndFlush=False))
+                OUT.append(self.get_data(check=True, checkSemAndFlush = False))
+            elif outputFormat == 1:
+                OUT[k] = self.get_data(check=True, copy=self.location >= 0, checkSemAndFlush = False)
             else:
-                OUT[k] = self.get_data(check=True, copy=self.location >= 0,
-                                       checkSemAndFlush=False)
+                self.IMAGE.semwait(self.semID)
+            
             if monitorCount:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
