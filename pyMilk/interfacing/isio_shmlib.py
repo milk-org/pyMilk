@@ -468,14 +468,9 @@ class SHM:
         ----------
         - fitsname: a filename (overwrite=True)
         """
-        try:
-            import astropy.io.fits as pf  # type: ignore
-
-            pf.writeto(fitsname, self.get_data(), overwrite=True)
-        except:
-            import pyfits as pf  # type: ignore
-
-            pf.writeto(fitsname, self.get_data(), clobber=True)
+        from pyMilk.interfacing import fits_lib
+        fits_lib.multi_write(fitsname, self.get_data(), symcode=self.symcode,
+                             tri_dim=self.triDimState)
         return 0
 
     #############################################################
