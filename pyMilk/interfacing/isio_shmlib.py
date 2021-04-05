@@ -277,39 +277,57 @@ class SHM:
             self.print_meta_data()
 
     def create_keyword_list(self) -> None:
+        '''
+            Deprecated.
+        '''
         raise DeprecationWarning(
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
     def read_keywords(self) -> None:
+        '''
+            Deprecated.
+        '''
         raise DeprecationWarning(
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
     def write_keywords(self) -> None:
+        '''
+            Deprecated.
+        '''
         raise DeprecationWarning(
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
     def read_keyword(self, ii: int) -> None:
+        '''
+            Deprecated.
+        '''
         raise DeprecationWarning(
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
     def write_keyword(self, ii: int) -> None:
+        '''
+            Deprecated.
+        '''
         raise DeprecationWarning(
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
     def update_keyword(self, name: str, value: Union[int, str, float],
-                       comment: str = '') -> None:
+                       comment: str = None) -> None:
         '''
         Mind the signature change from xaosim: ii (kw index) is not used.
         '''
         kws = self.IMAGE.get_kws()
         if name not in kws:
             raise AssertionError('Updating a keyword that does not exist yet.')
-        kws[name] = Image_kw(name, value, comment)
+        if comment is None:  # Keeping prev comment, updating value only
+            kws[name] = Image_kw(name, value, kws[name].comment)
+        else:
+            kws[name] = Image_kw(name, value, comment)
         self.IMAGE.set_kws(kws)
 
     def set_keywords(self, kw_dict: Dict[str, None]):
