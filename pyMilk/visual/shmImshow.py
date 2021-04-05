@@ -69,9 +69,11 @@ class ShmImshowClass:
         # Add the histogram
         self.hist = pg.HistogramLUTItem(self.imgItem)  # creates histo
         self.win.addItem(self.hist)  # add hist in main window
-        # self.hist.autoHistogramRange()  # inits levels
+        self.hist.autoHistogramRange()  # inits levels
         self.hist.gradient.loadPreset('thermal')
         self.hist.setMaximumWidth(200)
+
+        self.hist_autoscale = True
 
         # TODO
         self.titleStr = f'Display of SHM data: {shmname}'
@@ -105,6 +107,7 @@ class ShmImshowClass:
                 ('[', self._slower),
                 (']', self._faster),
                 ('D', self._toggleDarkSub),
+                ('A', self._toggle_hist_autoscale),
         ]
 
         # Extra internals for tracking states related to the shortcuts
@@ -171,27 +174,43 @@ class ShmImshowClass:
         self.timer.setInterval(1000. / self.targetFps)
 
     def grabData(self) -> None:
-        if not hasattr(self, '_logZ') or not self._logZ:
-            self.data = self.shm.get_data()
-        else:
-            self.data = np.log10(self.shm.get_data(copy=False))
+        self.data = self.shm.get_data()
 
     def grabDark(self) -> None:
-        if not self._logZ:
-            self.dark = self.shmDark.get_data()
+        self.dark = self.shmDark.get_data()
+        
+
+    def _toggle_hist_autoscale(self):
+        self.hist_autoscale = not self.hist_autoscale
+        if self.hist_autoscale:
+            self.hist.autoHistogramRange()
         else:
-            self.dark = np.log10(self.shmDark.get_data(copy=False))
+            self.hist.setHistogramRange(*self.hist.getLevels())
+            
+        '''
+        if self._doDarkSub:
+            self.hist.setLevels(self.data.min() - self.dark.min(),
+                                self.data.max() - self.dark.max())
+        else:
+            self.hist.setLevels(self.data.min(), self.data.max())
+        '''
+
 
     def update(self) -> None:
         self.grabData()
         if self._doDarkSub:
             self.grabDark()
-            self.imgItem.setImage(self.data - self.dark)
-            self.hist.setLevels(self.data.min() - self.dark.min(),
-                                self.data.max() - self.dark.max())
+            image = self.data - self.dark # Wait this is super wrong in log scale !
         else:
-            self.imgItem.setImage(self.data)
-            self.hist.setLevels(self.data.min(), self.data.max())
+            image = self.data
+
+        if hasattr(self, '_logZ') and self._logZ:
+            image = np.log10(np.clip(image, 0.1, None))
+
+        if self.hist_autoscale:
+            self.imgItem.setImage(image)
+        else:
+            self.imgItem.setImage(image, levels=self.hist.getLevels())
 
         self.updateTimerAndCounter()
 
