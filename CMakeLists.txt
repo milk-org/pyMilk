@@ -1,7 +1,7 @@
 project(pyMilk)
 cmake_minimum_required(VERSION 3.8)
 
-set(build_python_module ON CACHE BOOL "Build ImageStreamIO with python extension" FORCE)
+set(python_build ON CACHE BOOL "Build ImageStreamIO with python extension" FORCE)
 
 find_package(CUDA)
 
