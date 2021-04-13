@@ -15,7 +15,7 @@ def test_data_conservation():
                 data = np.random.randn(*s)
 
                 shm_write = SHM("pyMilk_autotest", data, symcode=sym,
-                                triDim=tri)
+                                triDim=tri, location=-1, shared=1)
                 shm_read = SHM("pyMilk_autotest", symcode=sym, triDim=tri)
 
                 dd = shm_read.get_data()
