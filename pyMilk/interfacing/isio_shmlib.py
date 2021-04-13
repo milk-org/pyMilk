@@ -321,16 +321,52 @@ class SHM:
         '''
         Mind the signature change from xaosim: ii (kw index) is not used.
         '''
-        kws = self.IMAGE.get_kws()
-        if name not in kws:
+        kws = self.IMAGE.get_kws_list()
+        kws_names = [kw.name for kw in kws]
+        if name not in kws_names:
             raise AssertionError('Updating a keyword that does not exist yet.')
+        idx = kws_names.index(name)
         if comment is None:  # Keeping prev comment, updating value only
-            kws[name] = Image_kw(name, value, kws[name].comment)
+            kws[idx] = Image_kw(name, value, kws[idx].comment)
         else:
-            kws[name] = Image_kw(name, value, comment)
-        self.IMAGE.set_kws(kws)
+            kws[idx] = Image_kw(name, value, comment)
+        self.IMAGE.set_kws_list(kws)
 
     def set_keywords(self, kw_dict: Dict[str, None]):
+        '''
+        Sets a keyword dictionnary into the SHM
+        This is a tentatively non-destructive write
+
+        kw_dict: {key: value}, {key: (value,)} and {key: (value, comment)} are all accepted
+        '''
+        kws = self.IMAGE.get_kws_list()
+        kws_names = [kw.name for kw in kws]
+
+        for name in kw_dict:
+            if name in kws_names:
+                idx = kws_names.index(name) # Current location
+            else:
+                idx = -1 # Append
+
+            if not isinstance(kw_dict[name], tuple):
+                v = kw_dict[name]
+                c = ''
+            elif len(kw_dict[name]) == 1:
+                v = kw_dict[name][0]
+                c = ''
+            else:
+                v = kw_dict[name][0]
+                c = kw_dict[name][1]
+            
+            if idx >= 0:
+                kws[idx] = Image_kw(name, v, c)
+            else:
+                kws.append(Image_kw(name, v, c))
+
+        self.IMAGE.set_kws_list(kws)
+
+
+    def reset_keywords(self, kw_dict: Dict[str, None]):
         '''
         Sets a keyword dictionnary into the SHM
         This is a complete write - it erases pre-existing keywords
