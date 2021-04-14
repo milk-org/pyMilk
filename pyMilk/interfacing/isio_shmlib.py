@@ -535,13 +535,19 @@ class SHM:
         """
         Returns exposure time (sec)
         """
-        return self.get_keywords()["tint"]
+        try:
+            return self.get_keywords()["tint"]
+        except:
+            return self.get_keywords()["EXPTIME"]
 
     def get_fps(self) -> float:
         """
         Returns framerate (Hz)
         """
-        return self.get_keywords()["fps"]
+        try:
+            return self.get_keywords()["fps"]
+        except:
+            return self.get_keywords()["FRATE"]
 
     def get_ndr(self) -> int:
         """
@@ -553,12 +559,15 @@ class SHM:
         """
         Return image crop boundaries
         """
-        return (
-                self.get_keywords()["x0"],
-                self.get_keywords()["x1"],
-                self.get_keywords()["y0"],
-                self.get_keywords()["y1"],
-        )
+        x0x1y0y1 = [None, None, None, None]
+        old_key = ['x0', 'x1', 'y0', 'y1']
+        new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
+        for k in range(4):
+            try:
+                x0x1y0y1[k] =self.get_keywords()[old_key[k]]
+            except:
+                x0x1y0y1[k] =self.get_keywords()[new_key[k]]
+        return np.asarray(x0x1y0y1)
 
     #############################################################
     # ADDITIONAL FEATURES - NOT SUPPORTED BY xaosim shm STRUCTURE
