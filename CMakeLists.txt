@@ -11,4 +11,4 @@ if(CUDA_FOUND)
 endif(CUDA_FOUND)
 
 add_subdirectory(ImageStreamIO)
-add_subdirectory(ImageStreamIO-backport)
+add_subdirectory(ImageStreamIO_backport)
