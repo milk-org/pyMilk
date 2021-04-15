@@ -1,9 +1,9 @@
 [submodule "ImageStreamIO"]
 	path = ImageStreamIO
-	url = ../ImageStreamIO
+	url = http://github.com/milk-org/ImageStreamIO.git
 	branch = dev
 
 [submodule "ImageStreamIO-backport"]
 	path = ImageStreamIO-backport
-	url = ../ImageStreamIO
+	url = http://github.com/milk-org/ImageStreamIO.git
 	branch = pymilk-backport
