@@ -83,8 +83,9 @@ setup(
         url="http://www.github.com/milk-org/pyMilk",
         packages=['pyMilk'],  # same as name
         install_requires=['docopt', 'pyqtgraph', 'pybind11', 'numpy'],
-        ext_modules=[  #CMakeExtension('ImageStreamIO'),
-                CMakeExtension('ImageStreamIO-backport'),
+        ext_modules=[
+                CMakeExtension('ImageStreamIO'),
+                CMakeExtension('ImageStreamIO_backport')
         ],
         cmdclass=dict(build_ext=CMakeBuild),
         scripts=['pyMilk/visual/shmPlot.py', 'pyMilk/visual/shmImshow.py'])

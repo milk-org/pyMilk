@@ -57,28 +57,17 @@ Credit for ImageStreamIO C library: O. Guyon
 Credit for ImageStreamIOWrap pybind interface: A. Sevin
 """
 
-try:
-    try:  # First shot
-        from ImageStreamIOWrap import Image, Image_kw
-    except:  # Second shot - maybe you forgot the default path ?
-        import sys
-
-        sys.path.append("/usr/local/python")
-        from ImageStreamIOWrap import Image, Image_kw
-except:
-    print("pyMilk.interfacing.isio_shmlib:")
-    print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
-
 from typing import Union, Tuple, List, Dict
 import numpy as np
 import time
 
 from pyMilk.util import img_shapes
+from pyMilk.interfacing.multiverse_config import MILK_ENVIRONMENTS
 
 import os
 
 
-class SHM:
+class SHM_single:
     """
         Main interfacing class
     """
@@ -99,6 +88,8 @@ class SHM:
             autoSqueeze: bool = True,
             symcode: int = 4,
             triDim: int = img_shapes.Which3DState.LAST2LAST,
+            Image_class=None,
+            Image_kw_class=None,
     ) -> None:
         """
         Constructor for a SHM (shared memory) object.
@@ -146,14 +137,20 @@ class SHM:
             arguments shared and location added.
         """
 
-        self.IMAGE = Image()
+        if Image_class is None:
+            Image_class = MILK_ENVIRONMENTS[0]['Image']
+        if Image_kw_class is None:
+            Image_kw_class = MILK_ENVIRONMENTS[0]['Image_kw']
+        self.Image_kw_class = Image_kw_class
+
+        self.IMAGE = Image_class()
         self.FNAME = _checkSHMName(fname)
 
         self.semID = None  # type: int
         self.location = location
-        self.symcode = (
-                symcode  # Handle image symetries; 0-7, see pyMilk.util.img_shapes
-        )
+
+        # Handle image symetries; 0-7 and cubeaxis swaps, see pyMilk.util.img_shapes
+        self.symcode = (symcode)
         self.triDimState = triDim
 
         # Image opening for reading
@@ -327,9 +324,9 @@ class SHM:
             raise AssertionError('Updating a keyword that does not exist yet.')
         idx = kws_names.index(name)
         if comment is None:  # Keeping prev comment, updating value only
-            kws[idx] = Image_kw(name, value, kws[idx].comment)
+            kws[idx] = self.Image_kw_class(name, value, kws[idx].comment)
         else:
-            kws[idx] = Image_kw(name, value, comment)
+            kws[idx] = self.Image_kw_class(name, value, comment)
         self.IMAGE.set_kws_list(kws)
 
     def set_keywords(self, kw_dict: Dict[str, None]):
@@ -344,9 +341,9 @@ class SHM:
 
         for name in kw_dict:
             if name in kws_names:
-                idx = kws_names.index(name) # Current location
+                idx = kws_names.index(name)  # Current location
             else:
-                idx = -1 # Append
+                idx = -1  # Append
 
             if not isinstance(kw_dict[name], tuple):
                 v = kw_dict[name]
@@ -357,14 +354,13 @@ class SHM:
             else:
                 v = kw_dict[name][0]
                 c = kw_dict[name][1]
-            
+
             if idx >= 0:
-                kws[idx] = Image_kw(name, v, c)
+                kws[idx] = self.Image_kw_class(name, v, c)
             else:
-                kws.append(Image_kw(name, v, c))
+                kws.append(self.Image_kw_class(name, v, c))
 
         self.IMAGE.set_kws_list(kws)
-
 
     def reset_keywords(self, kw_dict: Dict[str, None]):
         '''
@@ -384,7 +380,7 @@ class SHM:
             else:
                 v = kw_dict[name][0]
                 c = kw_dict[name][1]
-            kws[name] = Image_kw(name, v, c)
+            kws[name] = self.Image_kw_class(name, v, c)
 
         self.IMAGE.set_kws(kws)
 
@@ -564,9 +560,9 @@ class SHM:
         new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
         for k in range(4):
             try:
-                x0x1y0y1[k] =self.get_keywords()[old_key[k]]
+                x0x1y0y1[k] = self.get_keywords()[old_key[k]]
             except:
-                x0x1y0y1[k] =self.get_keywords()[new_key[k]]
+                x0x1y0y1[k] = self.get_keywords()[new_key[k]]
         return np.asarray(x0x1y0y1)
 
     #############################################################
