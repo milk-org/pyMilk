@@ -67,6 +67,33 @@ from pyMilk.interfacing.multiverse_config import MILK_ENVIRONMENTS
 import os
 
 
+def SHM(*args, forced_version=None, **kwargs):
+    if forced_version is not None:
+        envs_to_try = [MILK_ENVIRONMENTS[forced_version]]
+    else:
+        envs_to_try = MILK_ENVIRONMENTS
+
+    success = False
+    shm = None
+    orig_milk_shm_dir = os.environ['MILK_SHM_DIR']
+
+    for env in envs_to_try:
+        try:
+            os.environ['MILK_SHM_DIR'] = env['SHM_DIR']
+            shm = SHM_single(*args, Image_class=env['Image'],
+                             Image_kw_class=env['Image_kw'], **kwargs)
+            success = True
+        except:
+            pass
+
+    os.environ['MILK_SHM_DIR'] = orig_milk_shm_dir
+
+    if success:
+        return shm
+
+    raise AssertionError('No success with any of the multiverse version !')
+
+
 class SHM_single:
     """
         Main interfacing class
