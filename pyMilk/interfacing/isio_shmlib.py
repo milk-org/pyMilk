@@ -443,6 +443,18 @@ class SHM_single:
     def get_counter(self) -> int:
         return self.IMAGE.md.cnt0
 
+    def non_block_wait_semaphore(self, sleeptime=0.1):
+        self._checkGrabSemaphore()
+        self.IMAGE.semflush(self.semID)
+        ret = -1
+        while ret < 0:
+            time.sleep(sleeptime)
+            # ret is -1 is semaphore is alive and not posted
+            ret = self.IMAGE.semtrywait(self.semID)
+
+        # ret will be 1 (sem destroyed) or 0 (sem posted)
+        return ret
+
     def get_data(
             self,
             check: bool = False,
