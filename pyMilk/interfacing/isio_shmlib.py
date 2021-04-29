@@ -344,9 +344,9 @@ class SHM:
 
         for name in kw_dict:
             if name in kws_names:
-                idx = kws_names.index(name) # Current location
+                idx = kws_names.index(name)  # Current location
             else:
-                idx = -1 # Append
+                idx = -1  # Append
 
             if not isinstance(kw_dict[name], tuple):
                 v = kw_dict[name]
@@ -357,14 +357,13 @@ class SHM:
             else:
                 v = kw_dict[name][0]
                 c = kw_dict[name][1]
-            
+
             if idx >= 0:
                 kws[idx] = Image_kw(name, v, c)
             else:
                 kws.append(Image_kw(name, v, c))
 
         self.IMAGE.set_kws_list(kws)
-
 
     def reset_keywords(self, kw_dict: Dict[str, None]):
         '''
@@ -417,6 +416,18 @@ class SHM:
 
     def get_counter(self) -> int:
         return self.IMAGE.md.cnt0
+
+    def non_block_wait_semaphore(self, sleeptime=0.1):
+        self._checkGrabSemaphore()
+        self.IMAGE.semflush(self.semID)
+        ret = -1
+        while ret < 0:
+            time.sleep(sleeptime)
+            # ret is -1 is semaphore is alive and not posted
+            ret = self.IMAGE.semtrywait(self.semID)
+
+        # ret will be 1 (sem destroyed) or 0 (sem posted)
+        return ret
 
     def get_data(
             self,
@@ -564,9 +575,9 @@ class SHM:
         new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
         for k in range(4):
             try:
-                x0x1y0y1[k] =self.get_keywords()[old_key[k]]
+                x0x1y0y1[k] = self.get_keywords()[old_key[k]]
             except:
-                x0x1y0y1[k] =self.get_keywords()[new_key[k]]
+                x0x1y0y1[k] = self.get_keywords()[new_key[k]]
         return np.asarray(x0x1y0y1)
 
     #############################################################
