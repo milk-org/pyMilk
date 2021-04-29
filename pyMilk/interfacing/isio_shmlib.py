@@ -85,6 +85,8 @@ def SHM(*args, forced_version=None, **kwargs):
             success = True
         except:
             pass
+        if success:
+            break
 
     os.environ['MILK_SHM_DIR'] = orig_milk_shm_dir
 
