@@ -421,6 +421,15 @@ class SHM_single:
         Will return {name: (value, comments)} if comments is True
         '''
 
+        # We'll give ourselves two tries - for race conditions with camera servers
+        try:
+            return self._get_keywords_nofail()
+        except:
+            time.sleep(.002)
+            return self._get_keywords_nofail()
+
+
+    def _get_keywords_nofail(self, comments=False):
         kws = self.IMAGE.get_kws()
         kws_ret = {}
         for name in kws:
@@ -430,6 +439,7 @@ class SHM_single:
                 kws_ret[name] = kws[name].value
 
         return kws_ret
+
 
     def print_meta_data(self) -> None:
         print(self.IMAGE.md)
