@@ -397,7 +397,7 @@ class SHM:
 
         # We'll give ourselves two tries - for race conditions with camera servers
         try:
-            return self._get_keywords_nofail()
+            return self._get_keywords_nofail(comments=comments)
         except:
             time.sleep(.002)
             return self._get_keywords_nofail()
