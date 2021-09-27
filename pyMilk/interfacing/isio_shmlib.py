@@ -344,9 +344,9 @@ class SHM:
 
         for name in kw_dict:
             if name in kws_names:
-                idx = kws_names.index(name) # Current location
+                idx = kws_names.index(name)  # Current location
             else:
-                idx = -1 # Append
+                idx = -1  # Append
 
             if not isinstance(kw_dict[name], tuple):
                 v = kw_dict[name]
@@ -357,14 +357,13 @@ class SHM:
             else:
                 v = kw_dict[name][0]
                 c = kw_dict[name][1]
-            
+
             if idx >= 0:
                 kws[idx] = Image_kw(name, v, c)
             else:
                 kws.append(Image_kw(name, v, c))
 
         self.IMAGE.set_kws_list(kws)
-
 
     def reset_keywords(self, kw_dict: Dict[str, None]):
         '''
@@ -553,7 +552,10 @@ class SHM:
         """
         Returns NDR status
         """
-        return self.get_keywords()["NDR"]
+        try:
+            return self.get_keywords()["NDR"]
+        except:
+            return self.get_keywords()["DET-NSMP"]
 
     def get_crop(self) -> Tuple[int, int, int, int]:
         """
@@ -564,9 +566,9 @@ class SHM:
         new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
         for k in range(4):
             try:
-                x0x1y0y1[k] =self.get_keywords()[old_key[k]]
+                x0x1y0y1[k] = self.get_keywords()[old_key[k]]
             except:
-                x0x1y0y1[k] =self.get_keywords()[new_key[k]]
+                x0x1y0y1[k] = self.get_keywords()[new_key[k]]
         return np.asarray(x0x1y0y1)
 
     #############################################################
@@ -631,12 +633,13 @@ class SHM:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
             if outputFormat == 0:
-                OUT.append(self.get_data(check=True, checkSemAndFlush = False))
+                OUT.append(self.get_data(check=True, checkSemAndFlush=False))
             elif outputFormat == 1:
-                OUT[k] = self.get_data(check=True, copy=self.location >= 0, checkSemAndFlush = False)
+                OUT[k] = self.get_data(check=True, copy=self.location >= 0,
+                                       checkSemAndFlush=False)
             else:
                 self.IMAGE.semwait(self.semID)
-            
+
             if monitorCount:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
