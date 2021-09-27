@@ -428,7 +428,6 @@ class SHM_single:
             time.sleep(.002)
             return self._get_keywords_nofail()
 
-
     def _get_keywords_nofail(self, comments=False):
         kws = self.IMAGE.get_kws()
         kws_ret = {}
@@ -439,7 +438,6 @@ class SHM_single:
                 kws_ret[name] = kws[name].value
 
         return kws_ret
-
 
     def print_meta_data(self) -> None:
         print(self.IMAGE.md)
@@ -600,7 +598,10 @@ class SHM_single:
         """
         Returns NDR status
         """
-        return self.get_keywords()["NDR"]
+        try:
+            return self.get_keywords()["NDR"]
+        except:
+            return self.get_keywords()["DET-NSMP"]
 
     def get_crop(self) -> Tuple[int, int, int, int]:
         """
