@@ -88,4 +88,7 @@ setup(
                 CMakeExtension('ImageStreamIO_backport')
         ],
         cmdclass=dict(build_ext=CMakeBuild),
-        scripts=['pyMilk/visual/shmPlot.py', 'pyMilk/visual/shmImshow.py'])
+        scripts=[
+                'pyMilk/visual/shmPlot.py', 'pyMilk/visual/shmImshow.py',
+                'pyMilk/scripts/zmq_send.py', 'pyMilk/scripts/zmq_recv.py'
+        ])
