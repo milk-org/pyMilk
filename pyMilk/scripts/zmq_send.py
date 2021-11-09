@@ -2,11 +2,12 @@
 zmq_send.py
 
 Usage:
-    zmq_send.py <host:port> <shm_name>
+    zmq_send.py <host:port> <shm_name> [options]
 
 Options:
-    <host:port>     IP adress : port to bind to.
+    <host:port>     IP address : port to bind to.
     <shm_name>      SHMs to send
+    -t <timeout>       Timeout to re-send data [default: -1]
 '''
 ''' TBC
     <shm_name>      One or more SHMs to send
@@ -16,7 +17,7 @@ Options:
 '''bash
 IP=""
 for CH in 00 01 02 03 04 05 06 07 08 09 10 11; do
-    zmq_send.py ${IP}:321${CH} dm00disp${CH}
+    zmq_send.py ${IP}:321${CH} dm00disp${CH} &
 done
 '''
 
@@ -27,7 +28,7 @@ from docopt import docopt
 from pyMilk.interfacing.shm import SHM
 
 
-def zmq_send_loop(host_port: Tuple[str, int], shm_name: str):
+def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float):
 
     # Open shared memories
     shm_obj = SHM(shm_name)
@@ -40,7 +41,7 @@ def zmq_send_loop(host_port: Tuple[str, int], shm_name: str):
 
     init = True
     while True:
-        data = shm_obj.get_data(check=True, checkSemAndFlush=init, timeout=1.0)
+        data = shm_obj.get_data(check=True, checkSemAndFlush=init, timeout=timeout)
         init = False
         kw = shm_obj.get_keywords()
 
@@ -58,5 +59,6 @@ if __name__ == "__main__":
     host = hp[0]
     port = int(hp[1])
     shm_name = doc['<shm_name>']
+    timeout = float(doc['-t'])
 
-    zmq_send_loop((host, port), shm_name)
+    zmq_send_loop((host, port), shm_name, timeout)
