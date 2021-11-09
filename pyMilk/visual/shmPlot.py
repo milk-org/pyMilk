@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
+
 '''
 shmPlot.py
 Visual plotter for 1D or 2D data in shm.

@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
+
 '''
 shmImshow.py
 Visual image for 2D data in shm.
