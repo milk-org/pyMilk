@@ -49,9 +49,18 @@ def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
             out_shm.set_data(data)
         else:
             # Needs a little kick on dtype parsing o_O
-            out_shm = SHM(out_name,
-                          data=data.astype(np.dtype(data.dtype.name)),
-                          nbkw=len(keywords) * 2)
+            try:  # Try reuse
+                out_shm = SHM(out_name)
+                out_shm.set_data(
+                        data.astype(np.dtype(data.dtype.name))
+                )  # Make it crash here if dtype/dshape noncompliant
+                out_shm.set_keywords(
+                        keywords
+                )  # Make it crash here if we need keyword space
+            except:
+                out_shm = SHM(out_name,
+                              data=data.astype(np.dtype(data.dtype.name)),
+                              nbkw=len(keywords) * 2)
             pymilk_ready = True
 
         out_shm.set_keywords(keywords)
