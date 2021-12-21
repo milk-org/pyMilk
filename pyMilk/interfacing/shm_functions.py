@@ -23,7 +23,12 @@ def creashmim(
     '''
         See isio_shmlib.py
 
-        Note attempt_reuse intervenes before delete_existing
+        Note attempt_reuse intervenes before delete_existing:
+        reuse | delete
+        False | False   -> systematically overwrite
+        False | True    -> delete .im.shm and semaphores if any, recreate
+        True  | False   -> Attempt re-use (shape, type, keyword quantity), overwrite upon fail.
+        True  | True   -> Attempt re-use (shape, type, keyword quantity). Delete existing files and re-create upon fail.
     '''
 
     shm_handle = None
