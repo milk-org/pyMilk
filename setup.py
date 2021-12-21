@@ -87,5 +87,6 @@ setup(
         cmdclass=dict(build_ext=CMakeBuild),
         scripts=[
                 'pyMilk/visual/shmPlot.py', 'pyMilk/visual/shmImshow.py',
-                'pyMilk/scripts/zmq_send.py', 'pyMilk/scripts/zmq_recv.py'
+                'pyMilk/scripts/zmq_send.py', 'pyMilk/scripts/zmq_recv.py',
+                'pyMilk/scripts/creashmim'
         ])

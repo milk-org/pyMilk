@@ -91,7 +91,7 @@ class SHM:
             self,
             fname: str,
             data: np.ndarray = None,
-            nbkw: int = 0,
+            nbkw: int = 50,
             shared: bool = True,
             location: int = -1,
             verbose: bool = False,
@@ -147,7 +147,7 @@ class SHM:
         """
 
         self.IMAGE = Image()
-        self.FNAME = _checkSHMName(fname)
+        self.FNAME = check_SHM_name(fname)
 
         self.semID = None  # type: int
         self.location = location
@@ -321,6 +321,7 @@ class SHM:
         '''
         Mind the signature change from xaosim: ii (kw index) is not used.
         '''
+
         kws = self.IMAGE.get_kws_list()
         kws_names = [kw.name for kw in kws]
         if name not in kws_names:
@@ -670,7 +671,7 @@ class SHM:
         return OUT
 
 
-def _checkSHMName(fname):
+def check_SHM_name(fname: str):
     """
     Check if the name provided in the constructor is
     - a string in ISIO style
