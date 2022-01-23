@@ -136,9 +136,11 @@ class ShmTermshowClass:
         print_rgb_stdout(self.rgb)
 
     def run(self) -> None:
+        # Clear terminal
+        print('\x1bc')
         while True:
-            # Clear terminal
-            print('\x1bc')
+            # Move cursor
+            print("\x1b[H")
             self.update()
             time.sleep(1. / self.targetFps)
 
