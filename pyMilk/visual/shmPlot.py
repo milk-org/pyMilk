@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 '''
 shmPlot.py
 Visual plotter for 1D or 2D data in shm.
@@ -10,7 +9,7 @@ Usage:
 
 Options:
     <name>        SHM file to link: $MILK_SHM_DIR/<name>.im.shm
-    --fr=<val>    Fps requested [default: 30]
+    --fr=<val>    Fps requested [default: 10]
     -t            Transpose data
 '''
 
@@ -35,7 +34,7 @@ class ShmPlotClass:
     '''
 
     def __init__(self, shmname: str, transpose: bool = False,
-                 targetFps: float = 30) -> None:
+                 targetFps: float = 5.0) -> None:
 
         # Init grabber and get a buffer for warm-up
         self.shm = SHM(shmname)
@@ -126,8 +125,11 @@ class ShmPlotClass:
     def _swapGrid(self) -> None:
         self._gridState = (self._gridState + 1) % 4
 
-        self.plotItem.showGrid(*[(False, False), (False, True), (
-                True, True), (True, False)][self._gridState])
+        self.plotItem.showGrid(
+                *[(False, False), (False,
+                                   True), (True,
+                                           True), (True,
+                                                   False)][self._gridState])
 
     def _swapLogX(self) -> None:
         self._logx = not self._logx

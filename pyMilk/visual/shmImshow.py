@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 '''
 shmImshow.py
 Visual image for 2D data in shm.
@@ -11,7 +10,7 @@ Usage:
 
 Options:
     <name>        SHM file to link: $MILK_SHM_DIR/<name>.im.shm
-    --fr=<val>    Fps requested [default: 30]
+    --fr=<val>    Fps requested [default: 10]
     -s=<val>      Data orientation symcode (0-7) [default: 0]
 '''
 
@@ -43,7 +42,7 @@ class ShmImshowClass:
     '''
 
     def __init__(self, shmname: str, symcode: int = 0,
-                 targetFps: float = 30.) -> None:
+                 targetFps: float = 5.) -> None:
 
         # Init grabber and get a buffer for warm-up
         self.shm = SHM(shmname)
