@@ -50,7 +50,7 @@ def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
         else:
             # Needs a little kick on dtype parsing o_O
             try:  # Try reuse
-                out_shm = SHM(out_name)
+                out_shm = SHM(out_name, nbkw=5)
                 out_shm.set_data(
                         data.astype(np.dtype(data.dtype.name))
                 )  # Make it crash here if dtype/dshape noncompliant

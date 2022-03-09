@@ -90,6 +90,7 @@ setup(
                 'pyMilk/visual/shmImshow.py',
                 'pyMilk/scripts/zmq_send.py',
                 'pyMilk/scripts/zmq_recv.py',
+                'pyMilk/scripts/updatekw',
                 'pyMilk/scripts/creashmim',
                 'pyMilk/visual/shmTermshow.py',
         ])
