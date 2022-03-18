@@ -583,13 +583,22 @@ class SHM:
         Return image crop boundaries
         """
         x0x1y0y1 = [None, None, None, None]
-        old_key = ['x0', 'x1', 'y0', 'y1']
-        new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
-        for k in range(4):
+        kws = self.get_keywords()
+        try:
+            new_new_key = ['PRD-MIN1', 'PRD-RNG1', 'PRD-MIN2', 'PRD-RNG2']
+            x0x1y0y1 = [kws[key] for key in new_new_key]
+            # We switched from (start, end) to (start, range)
+            # Also it's gonna be very broken in case we're binning
+            x0x1y0y1[1] = x0x1y0y1[0] + x0x1y0y1[1] - 1
+            x0x1y0y1[3] = x0x1y0y1[2] + x0x1y0y1[3] - 1
+        except:
             try:
-                x0x1y0y1[k] = self.get_keywords()[old_key[k]]
+                new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
+                x0x1y0y1 = [kws[key] for key in new_key]
             except:
-                x0x1y0y1[k] = self.get_keywords()[new_key[k]]
+                old_key = ['x0', 'x1', 'y0', 'y1']
+                x0x1y0y1 = [kws[key] for key in old_key]
+
         return np.asarray(x0x1y0y1)
 
     #############################################################
