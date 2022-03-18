@@ -7,7 +7,8 @@ Usage:
 Options:
     <host:port>     IP address : port to bind to.
     <shm_name>      SHMs to send
-    -t <timeout>       Timeout to re-send data [default: -1]
+    -t <timeout>    Timeout to re-send data [default: -1]
+    -s <skip>       Send every n-th frame [default: 1]
 '''
 ''' TBC
     <shm_name>      One or more SHMs to send
@@ -28,7 +29,7 @@ from docopt import docopt
 from pyMilk.interfacing.shm import SHM
 
 
-def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float):
+def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float, skip:int = 1):
 
     # Open shared memories
     shm_obj = SHM(shm_name)
@@ -40,14 +41,19 @@ def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float):
     socket.bind(f"tcp://{host_port[0]}:{host_port[1]}")
 
     init = True
+    counter = 0
     while True:
         data = shm_obj.get_data(check=True, checkSemAndFlush=init, timeout=timeout)
         init = False
-        kw = shm_obj.get_keywords()
 
-        message = (shm_name + ' ').encode('ascii')
-        message += pickle.dumps((kw, data))
-        socket.send(message)
+        if (counter % skip == 0):
+            kw = shm_obj.get_keywords()
+
+            message = (shm_name + ' ').encode('ascii')
+            message += pickle.dumps((kw, data))
+            socket.send(message)
+
+        counter += 1
 
 
 if __name__ == "__main__":
@@ -60,5 +66,6 @@ if __name__ == "__main__":
     port = int(hp[1])
     shm_name = doc['<shm_name>']
     timeout = float(doc['-t'])
+    skip = int(doc['-s'])
 
-    zmq_send_loop((host, port), shm_name, timeout)
+    zmq_send_loop((host, port), shm_name, timeout, skip=skip)
