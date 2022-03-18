@@ -48,13 +48,13 @@ except:
 
 MILK_ENVIRONMENTS = [  # In priority order !
         {
-                'SHM_DIR': '/milk/shm/v3',
-                'Image': Image,
-                'Image_kw': Image_kw
-        },
-        {
-                'SHM_DIR': '/milk/shm/v1',
+                'SHM_DIR': '/tmp',
                 'Image': Image_old,
                 'Image_kw': Image_kw_old
+        },
+        {
+                'SHM_DIR': '/milk/shm',
+                'Image': Image,
+                'Image_kw': Image_kw
         },
 ]
