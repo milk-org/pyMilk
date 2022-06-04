@@ -5,10 +5,11 @@ creahmim (pyMilk)
 Replaces bash creashmim. Adding versatily.
 
 Usage:
-    creashmim <name> [<size>...] [--type=<type>] [--kw=<kw>] [--force] [--del]
+    creashmim <name> [<size>...] [--type=<type>] [-z] [--kw=<kw>] [--force] [--del]
 
 Options:
     <size>...          1, 2 or 3 successive integers.
+    -z                 zero out the SHM
     --type=<type>      datatype (see below) [default: f32].
     --kw=<kw>          number of keywords to allocate [default: 50].
     --force            disable reuse_existing
@@ -47,4 +48,4 @@ if __name__ == "__main__":
     nb_kw = int(args['--kw'])
 
     creashmim(name, shape, data_type, nb_kw, attempt_reuse=not args['--force'],
-              delete_existing=args['--del'])
+              delete_existing=args['--del'], do_zero=args['-z'])

@@ -19,7 +19,8 @@ def creashmim(
         symcode: int = 0,  # Should it be 4 ??
         tri_dim: int = img_shapes.Which3DState.LAST2LAST,
         delete_existing: bool = False,
-        attempt_reuse: bool = True) -> SHM:
+        attempt_reuse: bool = True,
+        do_zero: bool = True) -> SHM:
     '''
         See isio_shmlib.py
 
@@ -44,6 +45,10 @@ def creashmim(
                 raise ValueError(
                         "Existing SHM overwrite due to not enough kw space.")
             # Success in reopening !
+            if do_zero:
+                data = shm_handle.get_data().copy()
+                data[:] = 0  # Should work with all dtypes
+                shm_handle.set_data(data)
             return shm_handle
         except:
             print(f"creashmim {name}: attempt_reuse failed.")
@@ -65,5 +70,8 @@ def creashmim(
 
     shm_handle = SHM(name, (shape, data_type), nbkw=nb_kw, symcode=symcode,
                      triDim=tri_dim)
+
+    if do_zero:
+        shm_handle.set_data(np.zeros(shape, dtype=data_type))
 
     return shm_handle
