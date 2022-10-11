@@ -388,7 +388,7 @@ class SHM:
 
         self.IMAGE.set_kws(kws)
 
-    def get_keywords(self, comments=False):
+    def get_keywords(self, comments=False, n_tries=4):
         '''
         Return the keyword dictionary from the SHM
 
@@ -396,12 +396,14 @@ class SHM:
         Will return {name: (value, comments)} if comments is True
         '''
 
-        # We'll give ourselves two tries - for race conditions with camera servers
-        try:
-            return self._get_keywords_nofail(comments=comments)
-        except:
-            time.sleep(.002)
-            return self._get_keywords_nofail()
+        # We'll give ourselves several tries - for race conditions with camera servers
+        for i in range(n_tries):
+            try:
+                return self._get_keywords_nofail(comments=comments)
+            except:
+                time.sleep(.002)
+        # If we havent's succeeded: succeed or fail, last chance
+        return self._get_keywords_nofail(comments=comments)
 
     def _get_keywords_nofail(self, comments=False):
         kws = self.IMAGE.get_kws()
