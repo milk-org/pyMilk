@@ -50,7 +50,7 @@ class ShmPlotClass:
         self.fps = 0.
 
         # Set the plot area
-        self.plot = pg.graphicsWindows.PlotWidget()
+        self.plot = pg.PlotWidget()
         self.plot.show()
 
         self.title = f'Display of SHM data: {shmname}'
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     # Launch app and let the class spawn the widget
     # I'm doing it this way hoping to be able to reuse this for multi-display windows
-    app = QtGui.QApplication([doc['<name>'] + '.im.shm'])
+    app = QtWidgets.QApplication([doc['<name>'] + '.im.shm'])
     app.setQuitOnLastWindowClosed(True)
     plotter = ShmPlotClass(doc['<name>'], transpose=doc['-t'],
                            targetFps=doc['--fr'])

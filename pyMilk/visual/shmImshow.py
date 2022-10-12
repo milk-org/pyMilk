@@ -58,9 +58,10 @@ class ShmImshowClass:
         self.fps = 0.
 
         # Set the plot area
-        self.win = pg.graphicsWindows.GraphicsWindow()
+        self.win = pg.GraphicsLayoutWidget()
+        self.win.show()
         self.view = self.win.addViewBox(lockAspect=True)
-        self.view.show()
+        #self.view.show()
         self.imgItem = pg.ImageItem(border='w')
         self.imgItem.setLookupTable(1)
         self.view.addItem(self.imgItem)
@@ -89,7 +90,7 @@ class ShmImshowClass:
         # Timing - monitor fps and trigger refresh
         self.timer = QtCore.QTimer()
         self.targetFps = targetFps
-        self.timer.setInterval(1000. / self.targetFps)
+        self.timer.setInterval(int(1000. / self.targetFps))
         self.timer.timeout.connect(self.update)
         self.timer.start()
 
@@ -234,7 +235,7 @@ if __name__ == "__main__":
 
     # Launch app and let the class spawn the widget
     # I'm doing it this way hoping to be able to reuse this for multi-display windows
-    app = QtGui.QApplication([doc['<name>'] + '.im.shm'])
+    app = QtWidgets.QApplication([doc['<name>'] + '.im.shm'])
     app.setQuitOnLastWindowClosed(True)
     plotter = ShmImshowClass(doc['<name>'], symcode=doc['-s'],
                              targetFps=doc['--fr'])
