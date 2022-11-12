@@ -441,10 +441,19 @@ class SHM:
         return ret
 
     def check_sem_trywait(self):
+        '''
+        Performs a trywait on the currently held semaphore
+        Returns True if the semaphore was posted (and therefore acquired and decremented)
+        Returns False if the semaphore was 0 and the acquisition failed.
+        '''
         self._checkGrabSemaphore()
-        return self.IMAGE.semtrywait(self.semID)
+        return self.IMAGE.semtrywait(self.semID) == 0
 
     def check_sem_value(self):
+        '''
+        Check the semaphore value of the currently held read semaphore.
+        Returns the value, or -1 if error.
+        '''
         self._checkGrabSemaphore()
         return self.IMAGE.semvalue(self.semID)
 
