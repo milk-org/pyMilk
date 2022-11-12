@@ -440,6 +440,14 @@ class SHM:
         # ret will be 1 (sem destroyed) or 0 (sem posted)
         return ret
 
+    def check_sem_trywait(self):
+        self._checkGrabSemaphore()
+        return self.IMAGE.semtrywait(self.semID)
+
+    def check_sem_value(self):
+        self._checkGrabSemaphore()
+        return self.IMAGE.semvalue(self.semID)
+
     def get_data(
             self,
             check: bool = False,
@@ -464,9 +472,8 @@ class SHM:
             - sleepT not useful as we use semaphore waiting now.
         """
         if check:
-            if (
-                    checkSemAndFlush
-            ):  # For irregular operations - we want to bypass this in multi_recv_data
+            if checkSemAndFlush:
+                # For irregular operations - we want to bypass this in multi_recv_data
                 # Check, flush, and wait the semaphore
                 self._checkGrabSemaphore()
                 self.IMAGE.semflush(self.semID)
