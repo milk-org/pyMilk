@@ -29,5 +29,9 @@ if __name__ == "__main__":
     shm_name = args["<shm_name>"]
     kw_name = args["<kw_name>"]
     kw_value = args["<kw_value>"]
+    try:
+        kw_value = float(kw_value)
+    except:
+        pass
 
     main(shm_name, kw_name, kw_value)
