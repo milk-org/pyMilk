@@ -541,16 +541,17 @@ class SHM:
             data = np.array(data)  # A scalar array with () shape
 
         if self.nDim == 2:
-            self.IMAGE.write(
-                    img_shapes.image_encode(data,
-                                            self.symcode)[self.writeSlice])
+            data_towrite = img_shapes.image_encode(
+                    data, self.symcode)[self.writeSlice]
         elif self.nDim == 3:
-            self.IMAGE.write(
-                    img_shapes.full_cube_encode(
-                            data, self.symcode,
-                            self.triDimState)[self.writeSlice])
+            data_towrite = img_shapes.full_cube_encode(
+                    data, self.symcode, self.triDimState)[self.writeSlice]
         else:
-            self.IMAGE.write(data[self.writeSlice])
+            data_towrite = data[self.writeSlice]
+
+        if not data_towrite.flags['F_CONTIGUOUS']:
+            data_towrite = data_towrite.copy('F')
+        self.IMAGE.write(data_towrite)
 
     def save_as_fits(self, fitsname: str) -> int:
         """

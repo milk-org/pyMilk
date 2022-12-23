@@ -16,7 +16,7 @@ def creashmim(
         shape: Tuple[int],
         data_type: type = np.float32,
         nb_kw: int = 50,
-        symcode: int = 0,  # Should it be 4 ??
+        symcode: int = 4,  # Should it be 4 ??
         tri_dim: int = img_shapes.Which3DState.LAST2LAST,
         delete_existing: bool = False,
         attempt_reuse: bool = True,
