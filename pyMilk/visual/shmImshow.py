@@ -10,7 +10,7 @@ Usage:
 
 Options:
     <name>        SHM file to link: $MILK_SHM_DIR/<name>.im.shm
-    --fr=<val>    Fps requested [default: 10]
+    --fr=<val>    Fps requested [default: 8]
     -s=<val>      Data orientation symcode (0-7) [default: 0]
 '''
 
