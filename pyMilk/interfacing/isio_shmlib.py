@@ -574,51 +574,53 @@ class SHM:
         """
         Returns exposure time (sec)
         """
-        try:
-            return self.get_keywords()["tint"]
-        except:
-            return self.get_keywords()["EXPTIME"]
+        kws = self.get_keywords()
+        if "FRATE" in kws:
+            return kws["EXPTIME"]
+        return kws.get("tint", 1.0)
 
     def get_fps(self) -> float:
         """
         Returns framerate (Hz)
         """
-        try:
-            return self.get_keywords()["fps"]
-        except:
-            return self.get_keywords()["FRATE"]
+        kws = self.get_keywords()
+        if "FRATE" in kws:
+            return kws["FRATE"]
+        return kws.get("fps", 0.0)
 
     def get_ndr(self) -> int:
         """
         Returns NDR status
         """
-        try:
-            return self.get_keywords()["NDR"]
-        except:
-            return self.get_keywords()["DET-NSMP"]
+        kws = self.get_keywords()
+        if "DET-NSMP" in kws:
+            return kws["DET-NSMP"]
+        return kws.get("NDR", 1)
 
     def get_crop(self) -> Tuple[int, int, int, int]:
         """
         Return image crop boundaries
         """
-        x0x1y0y1 = [None, None, None, None]
+
         kws = self.get_keywords()
-        try:
-            new_new_key = ['PRD-MIN1', 'PRD-RNG1', 'PRD-MIN2', 'PRD-RNG2']
+        new_new_key = ['PRD-MIN1', 'PRD-RNG1', 'PRD-MIN2', 'PRD-RNG2']
+        if new_new_key[0] in kws:
             x0x1y0y1 = [kws[key] for key in new_new_key]
             # We switched from (start, end) to (start, range)
             # Also it's gonna be very broken in case we're binning
             x0x1y0y1[1] = x0x1y0y1[0] + x0x1y0y1[1] - 1
             x0x1y0y1[3] = x0x1y0y1[2] + x0x1y0y1[3] - 1
-        except:
-            try:
-                new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
-                x0x1y0y1 = [kws[key] for key in new_key]
-            except:
-                old_key = ['x0', 'x1', 'y0', 'y1']
-                x0x1y0y1 = [kws[key] for key in old_key]
+            return tuple(x0x1y0y1)
 
-        return np.asarray(x0x1y0y1)
+        new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
+        if new_key[0] in kws:
+            return tuple([kws[key] for key in new_key])
+
+        old_key = ['x0', 'x1', 'y0', 'y1']
+        if old_key[0] in kws:
+            x0x1y0y1 = tuple([kws[key] for key in old_key])
+
+        return (0, 0, self.shape[0], self.shape[1])
 
     #############################################################
     # ADDITIONAL FEATURES - NOT SUPPORTED BY xaosim shm STRUCTURE
