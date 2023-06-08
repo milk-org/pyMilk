@@ -256,6 +256,8 @@ class SHM:
         elif self.nDim == 3:
             data_c = img_shapes.full_cube_encode(data, self.symcode,
                                                  self.triDimState)
+        else:
+            raise NotImplementedError()
 
         self.shape_c = data_c.shape
         return data_c
@@ -650,7 +652,7 @@ class SHM:
             self.semID = self.IMAGE.getsemwaitindex(0)
 
     def multi_recv_data(self, n: int, outputFormat: int = 0,
-                        monitorCount: bool = False
+                        monitorCount: bool = False, timeout: float = 5.0
                         ) -> Union[List[np.ndarray], np.ndarray]:
         """
         Synchronous read of n successive images in a stream.
@@ -681,10 +683,12 @@ class SHM:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
             if outputFormat == 0:
-                OUT.append(self.get_data(check=True, checkSemAndFlush=False))
+                OUT.append(
+                        self.get_data(check=True, checkSemAndFlush=False,
+                                      timeout=timeout))
             else:
                 OUT[k] = self.get_data(check=True, copy=self.location >= 0,
-                                       checkSemAndFlush=False)
+                                       checkSemAndFlush=False, timeout=timeout)
             if monitorCount:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
