@@ -555,7 +555,7 @@ class SHM:
             data_towrite = data_towrite.copy('F')
         self.IMAGE.write(data_towrite)
 
-    def save_as_fits(self, fitsname: str) -> int:
+    def save_as_fits(self, fitsname: str, **kwargs) -> int:
         """
         Convenient sometimes, to be able to export the data as a fits file.
 
@@ -564,7 +564,7 @@ class SHM:
         - fitsname: a filename (overwrite=True)
         """
         from pyMilk.interfacing import fits_lib
-        fits_lib.multi_write(fitsname, self.get_data(), symcode=self.symcode,
+        fits_lib.multi_write(fitsname, self.get_data(**kwargs), symcode=self.symcode,
                              tri_dim=self.triDimState)
         return 0
 
@@ -577,7 +577,7 @@ class SHM:
         Returns exposure time (sec)
         """
         kws = self.get_keywords()
-        if "FRATE" in kws:
+        if "EXPTIME" in kws:
             return kws["EXPTIME"]
         return kws.get("tint", 1.0)
 
