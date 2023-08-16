@@ -56,6 +56,7 @@ Credit for ImageStreamIO C library: O. Guyon
 
 Credit for ImageStreamIOWrap pybind interface: A. Sevin
 """
+from __future__ import annotations
 
 try:
     try:  # First shot
@@ -70,6 +71,12 @@ except:
     print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
 
 from typing import Union, Tuple, List, Dict
+
+KWType = Union[str, int, float]
+KWDict = Dict[str, KWType]
+KWCommentDict = Dict[str, Tuple[KWType, str]]
+KWOptCommentDict = Dict[str, Union[KWType, Tuple[KWType, str]]]
+
 import numpy as np
 import time
 
@@ -189,7 +196,8 @@ class SHM:
             self.IMAGE.create(self.FNAME, data_c, location=location,
                               shared=shared, NBkw=nbkw)
 
-    def _init_internals_read(self, data: np.ndarray, autoSqueeze: bool):
+    def _init_internals_read(self, data: np.ndarray,
+                             autoSqueeze: bool) -> None:
         """
             Aux function for initializing
             data is C-side shape
@@ -225,7 +233,7 @@ class SHM:
                                                      self.symcode,
                                                      self.triDimState).shape
 
-    def _init_internals_creation(self, data):
+    def _init_internals_creation(self, data: np.ndarray) -> None:
         """
             Aux function for initializing
             data is python-side shape
@@ -318,7 +326,7 @@ class SHM:
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
-    def update_keyword(self, name: str, value: Union[int, str, float],
+    def update_keyword(self, name: str, value: KWType,
                        comment: str = None) -> None:
         '''
         Mind the signature change from xaosim: ii (kw index) is not used.
@@ -335,7 +343,7 @@ class SHM:
             kws[idx] = Image_kw(name, value, comment)
         self.IMAGE.set_kws_list(kws)
 
-    def set_keywords(self, kw_dict: Dict[str, None]):
+    def set_keywords(self, kw_dict: KWOptCommentDict) -> None:
         '''
         Sets a keyword dictionnary into the SHM
         This is a tentatively non-destructive write
@@ -368,7 +376,7 @@ class SHM:
 
         self.IMAGE.set_kws_list(kws)
 
-    def reset_keywords(self, kw_dict: Dict[str, None]):
+    def reset_keywords(self, kw_dict: KWOptCommentDict) -> None:
         '''
         Sets a keyword dictionnary into the SHM
         This is a complete write - it erases pre-existing keywords
@@ -390,7 +398,8 @@ class SHM:
 
         self.IMAGE.set_kws(kws)
 
-    def get_keywords(self, comments=False, n_tries=4):
+    def get_keywords(self, comments=False,
+                     n_tries=4) -> Union[KWDict, KWCommentDict]:
         '''
         Return the keyword dictionary from the SHM
 
@@ -407,7 +416,8 @@ class SHM:
         # If we havent's succeeded: succeed or fail, last chance
         return self._get_keywords_nofail(comments=comments)
 
-    def _get_keywords_nofail(self, comments=False):
+    def _get_keywords_nofail(self,
+                             comments=False) -> Union[KWDict, KWCommentDict]:
         kws = self.IMAGE.get_kws()
         kws_ret = {}
         for name in kws:
@@ -430,7 +440,7 @@ class SHM:
     def get_counter(self) -> int:
         return self.IMAGE.md.cnt0
 
-    def non_block_wait_semaphore(self, sleeptime=0.1):
+    def non_block_wait_semaphore(self, sleeptime=0.1) -> int:
         self._checkGrabSemaphore()
         self.IMAGE.semflush(self.semID)
         ret = -1
@@ -442,7 +452,7 @@ class SHM:
         # ret will be 1 (sem destroyed) or 0 (sem posted)
         return ret
 
-    def check_sem_trywait(self):
+    def check_sem_trywait(self) -> int:
         '''
         Performs a trywait on the currently held semaphore
         Returns True if the semaphore was posted (and therefore acquired and decremented)
@@ -451,7 +461,7 @@ class SHM:
         self._checkGrabSemaphore()
         return self.IMAGE.semtrywait(self.semID) == 0
 
-    def check_sem_value(self):
+    def check_sem_value(self) -> int:
         '''
         Check the semaphore value of the currently held read semaphore.
         Returns the value, or -1 if error.
@@ -577,7 +587,7 @@ class SHM:
         Returns exposure time (sec)
         """
         kws = self.get_keywords()
-        if "FRATE" in kws:
+        if "EXPTIME" in kws:
             return kws["EXPTIME"]
         return kws.get("tint", 1.0)
 
@@ -705,7 +715,7 @@ class SHM:
         return OUT
 
 
-def check_SHM_name(fname: str):
+def check_SHM_name(fname: str) -> str:
     """
     Check if the name provided in the constructor is
     - a string in ISIO style
