@@ -10,7 +10,6 @@ import subprocess
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from distutils.version import LooseVersion
 
 
 class CMakeExtension(Extension):
@@ -37,6 +36,7 @@ class CMakeBuild(build_ext):
             self.build_extension(ext)
 
     def build_extension(self, ext):
+
         extdir = os.path.abspath(
                 os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = [
@@ -64,10 +64,15 @@ class CMakeBuild(build_ext):
                 env.get('CXXFLAGS', ''), self.distribution.get_version())
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
-        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args,
-                              cwd=self.build_temp, env=env)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args,
-                              cwd=self.build_temp)
+
+        cmake_full_line = [
+                'cmake', f'-S{ext.sourcedir}', f'-B{self.build_temp}'
+        ] + cmake_args
+        subprocess.check_call(cmake_full_line, env=env)
+        cmake_full_line = ['cmake', '--build', self.build_temp] + build_args
+        subprocess.check_call(cmake_full_line, env=env)
+        # INFO: if debugging, do not allocate stdin, stdout, stderr in the subprocess calls.
+        # through the pip toolchains, it results in OSErrors bad file descriptor.
 
 
 with open("README.md", 'r') as f:
@@ -83,6 +88,7 @@ setup(
         url="http://www.github.com/milk-org/pyMilk",
         packages=['pyMilk'],  # same as name
         install_requires=['docopt', 'pyqtgraph', 'pybind11', 'numpy'],
+        setup_requires=['pybind11'],
         ext_modules=[CMakeExtension('ImageStreamIO')],
         cmdclass=dict(build_ext=CMakeBuild),
         scripts=[
