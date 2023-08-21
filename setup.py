@@ -88,7 +88,7 @@ setup(
         url="http://www.github.com/milk-org/pyMilk",
         packages=['pyMilk'],  # same as name
         install_requires=['docopt', 'pyqtgraph', 'pybind11', 'numpy'],
-        setup_requires=['pybind11'],
+        setup_requires=['pybind11>=2.11'],
         ext_modules=[CMakeExtension('ImageStreamIO')],
         cmdclass=dict(build_ext=CMakeBuild),
         scripts=[
