@@ -71,7 +71,7 @@ class ShmPlotClass:
         # Timing - monitor fps and trigger refresh
         self.timer = QtCore.QTimer()
         self.targetFps = targetFps
-        self.timer.setInterval(1000. / self.targetFps)
+        self.timer.setInterval(int(1000. / self.targetFps))
         self.timer.timeout.connect(self.update)
         self.timer.start()
 
