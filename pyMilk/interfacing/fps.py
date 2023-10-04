@@ -23,7 +23,12 @@ from __future__ import annotations
 
 import typing as typ
 
+import os
+import glob
+
+_CORES = os.sched_getaffinity(0)
 from CacaoProcessTools import fps as CPTFPS
+os.sched_setaffinity(0, _CORES)
 
 FPVal: typ.TypeAlias = typ.Union[str, bool, int, float]
 
@@ -53,11 +58,17 @@ class FPS:
         else:
             raise ValueError(f'get_param: key {key} not in FPS {self.name}.')
 
+    def conf_runs(self) -> bool:
+        return self.fps.CONFrunning == 1
+    
+    def run_runs(self) -> bool:
+        return self.fps.RUNrunning == 1
+
     def conf_start(self) -> None:
-        self._errno_raiser(self.fps.CONFstart(), 'run_start')
+        self._errno_raiser(self.fps.CONFstart(), 'conf_start')
 
     def conf_stop(self) -> None:
-        self._errno_raiser(self.fps.CONFstop(), 'run_stop')
+        self._errno_raiser(self.fps.CONFstop(), 'conf_stop')
 
     def run_start(self) -> None:
         self._errno_raiser(self.fps.RUNstart(), 'run_start')
@@ -75,14 +86,10 @@ class FPS:
         self.fps.disconnect()
 
 
-import os
-import glob
-
-
 class FPSManager:
 
     def __init__(self) -> None:
-        self.fps_cache: typ.Dict[str, FPS]
+        self.fps_cache: typ.Dict[str, FPS] = {}
 
     def find_fps(self, name: str) -> FPS:
         if (not name in self.fps_cache or self.fps_cache[name] is None):
@@ -94,7 +101,7 @@ class FPSManager:
         self.purge_cache()
         system_fps_files = glob.glob(os.environ['MILK_SHM_DIR'] + '/*.fps.shm')
         for fps_file in system_fps_files:
-            self.find_fps(os.path.basename(fps_file))
+            self.find_fps(os.path.basename(fps_file).split('.')[0])
 
     def purge_cache(self) -> None:
         for k, v in self.fps_cache.items():
