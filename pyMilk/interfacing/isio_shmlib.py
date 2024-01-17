@@ -76,7 +76,7 @@ if typ.TYPE_CHECKING:
     KWType = str | int | float
     KWDict = dict[str, KWType]
     KWCommentDict = dict[str, tuple[KWType, str]]
-    KWOptCommentDict = dict[str, KWType | tuple[KWType, str]]
+    KWOptCommentDict = dict[str, KWType | tuple[KWType] | tuple[KWType, str]]
 
 import datetime
 import numpy as np
@@ -168,25 +168,26 @@ class SHM:
         )
         self.triDimState = triDim
 
-        # Image opening for reading
-        isCreating = data is not None
-        if not isCreating:
+        if data is None:  # Image read
             if not self._checkExists():
                 raise FileNotFoundError(
                         f"Requested SHM {fname} does not exist")
             # _checkExists already performed the self.IMAGE.open()
 
             self._checkGrabSemaphore()
-            data = self.IMAGE.copy()  # Data is C-side shaped
+            data_arr: np.ndarray = self.IMAGE.copy()  # Data is C-side shaped
 
-            self._init_internals_read(data, autoSqueeze)
-        else:
+            self._init_internals_read(data_arr, autoSqueeze)
+
+        else:  # Image create
             if not isinstance(data, np.ndarray):
                 # data is (Shape, type) tuple
-                data = np.zeros(data[0],
-                                dtype=data[1])  # Data is Py-side shaped
+                data_arr = np.zeros(data[0],
+                                    dtype=data[1])  # Data is Py-side shaped
+            else:
+                data_arr = data
 
-            data_c = self._init_internals_creation(data)
+            data_c = self._init_internals_creation(data_arr)
 
             if not self._checkExists():
                 print(f"{self.FNAME}.im.shm will be created")
@@ -194,9 +195,6 @@ class SHM:
                 print(f"{self.FNAME}.im.shm will be overwritten")
                 # _checkExist opened the image, we can destroy.
                 self.IMAGE.destroy()
-                # Sleep 1/10th of a second - convenience to let streamCTRL re-scan (20 Hz) and detect the destruction
-                # before re-creating with the same name - but not the same ID.
-                time.sleep(0.1)
 
             self.IMAGE.create(self.FNAME, data_c, location=location,
                               shared=shared, NBkw=nbkw)
@@ -348,6 +346,16 @@ class SHM:
             kws[idx] = Image_kw(name, value, comment)
         self.IMAGE.set_kws_list(kws)
 
+    def _kw_opt_comment_unpacker(self, val: KWType | tuple[KWType] |
+                                 tuple[KWType, str]) -> tuple[KWType, str]:
+        if not isinstance(val, tuple):
+            v, c = val, ''
+        elif len(val) == 1:
+            v, c = val[0], ''
+        else:
+            v, c = val
+        return v, c
+
     def set_keywords(self, kw_dict: KWOptCommentDict) -> None:
         '''
         Sets a keyword dictionnary into the SHM
@@ -364,16 +372,7 @@ class SHM:
             else:
                 idx = -1  # Append
 
-            if not isinstance(kw_dict[name], tuple):
-                v = kw_dict[name]
-                c = ''
-            elif len(kw_dict[name]) == 1:
-                v = kw_dict[name][0]
-                c = ''
-            else:
-                v = kw_dict[name][0]
-                c = kw_dict[name][1]
-
+            v, c = self._kw_opt_comment_unpacker(kw_dict[name])
             if idx >= 0:
                 kws[idx] = Image_kw(name, v, c)
             else:
@@ -390,21 +389,23 @@ class SHM:
         '''
         kws = {}
         for name in kw_dict:
-            if not isinstance(kw_dict[name], tuple):
-                v = kw_dict[name]
-                c = ''
-            elif len(kw_dict[name]) == 1:
-                v = kw_dict[name][0]
-                c = ''
-            else:
-                v = kw_dict[name][0]
-                c = kw_dict[name][1]
-            kws[name] = Image_kw(name, v, c)
+            kws[name] = Image_kw(name,
+                                 *self._kw_opt_comment_unpacker(kw_dict[name]))
 
         self.IMAGE.set_kws(kws)
 
+    @typ.overload
+    def get_keywords(self, comments: typ.Literal[False] = False,
+                     n_tries: int = 4) -> KWDict:
+        ...
+
+    @typ.overload
+    def get_keywords(self, comments: typ.Literal[True],
+                     n_tries: int = 4) -> KWCommentDict:
+        ...
+
     def get_keywords(self, comments: bool = False,
-                     n_tries: int = 4) -> Union[KWDict, KWCommentDict]:
+                     n_tries: int = 4) -> KWDict | KWCommentDict:
         '''
         Return the keyword dictionary from the SHM
 
@@ -599,8 +600,11 @@ class SHM:
         """
         kws = self.get_keywords()
         if "EXPTIME" in kws:
-            return kws["EXPTIME"]
-        return kws.get("tint", 1.0)
+            retval = kws["EXPTIME"]
+        retval = kws.get("tint", 1.0)
+
+        assert isinstance(retval, float)
+        return retval
 
     def get_fps(self) -> float:
         """
@@ -608,8 +612,11 @@ class SHM:
         """
         kws = self.get_keywords()
         if "FRATE" in kws:
-            return kws["FRATE"]
-        return kws.get("fps", 0.0)
+            retval = kws["FRATE"]
+        retval = kws.get("fps", 0.0)
+
+        assert isinstance(retval, float)
+        return retval
 
     def get_ndr(self) -> int:
         """
@@ -617,8 +624,11 @@ class SHM:
         """
         kws = self.get_keywords()
         if "DET-NSMP" in kws:
-            return kws["DET-NSMP"]
-        return kws.get("NDR", 1)
+            retval = kws["DET-NSMP"]
+        retval = kws.get("NDR", 1)
+
+        assert isinstance(retval, int)
+        return retval
 
     def get_crop(self) -> tuple[int, int, int, int]:
         """
@@ -628,20 +638,29 @@ class SHM:
         kws = self.get_keywords()
         new_new_key = ['PRD-MIN1', 'PRD-RNG1', 'PRD-MIN2', 'PRD-RNG2']
         if new_new_key[0] in kws:
-            x0x1y0y1 = [kws[key] for key in new_new_key]
+            x0x1y0y1 = [int(kws[key]) for key in new_new_key]
             # We switched from (start, end) to (start, range)
             # Also it's gonna be very broken in case we're binning
             x0x1y0y1[1] = x0x1y0y1[0] + x0x1y0y1[1] - 1
             x0x1y0y1[3] = x0x1y0y1[2] + x0x1y0y1[3] - 1
-            return tuple(x0x1y0y1)
+            tup = tuple(x0x1y0y1)
+            assert len(tup) == 4
+            return tup
 
         new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
         if new_key[0] in kws:
-            return tuple([kws[key] for key in new_key])
+            tup = tuple([int(kws[key]) for key in new_key])
+            assert len(tup) == 4
+            return tup
 
         old_key = ['x0', 'x1', 'y0', 'y1']
         if old_key[0] in kws:
-            x0x1y0y1 = tuple([kws[key] for key in old_key])
+            x0x1y0y1 = [int(kws[key]) for key in old_key]
+            x0x1y0y1[1] = x0x1y0y1[0] + x0x1y0y1[1] - 1
+            x0x1y0y1[3] = x0x1y0y1[2] + x0x1y0y1[3] - 1
+            tup = tuple(x0x1y0y1)
+            assert len(tup) == 4
+            return tup
 
         return (0, 0, self.shape[0], self.shape[1])
 
@@ -672,7 +691,20 @@ class SHM:
         if self.semID is None:
             self.semID = self.IMAGE.getsemwaitindex(0)
 
-    def multi_recv_data(self, n: int, outputFormat: int = 0,
+    @typ.overload
+    def multi_recv_data(self, n: int,
+                        output_as_cube: typ.Literal[False] = False,
+                        monitorCount: bool = False,
+                        timeout: float = 5.0) -> list[np.ndarray]:
+        ...
+
+    @typ.overload
+    def multi_recv_data(self, n: int, output_as_cube: typ.Literal[True],
+                        monitorCount: bool = False,
+                        timeout: float = 5.0) -> np.ndarray:
+        ...
+
+    def multi_recv_data(self, n: int, output_as_cube: bool = False,
                         monitorCount: bool = False,
                         timeout: float = 5.0) -> list[np.ndarray] | np.ndarray:
         """
@@ -688,11 +720,11 @@ class SHM:
         """
         # Prep output
 
-        OUT: list[np.ndarray] | np.ndarray
-        if outputFormat == 0:
-            OUT = []
+        output: list[np.ndarray] | np.ndarray
+        if output_as_cube is False:
+            output = [None for _ in range(n)]
         else:
-            OUT = np.zeros((n, *self.shape), dtype=self.nptype)
+            output = np.zeros((n, *self.shape), dtype=self.nptype)
 
         if monitorCount:
             countValues = np.zeros((2, n), dtype=np.uint64)
@@ -705,17 +737,16 @@ class SHM:
             if monitorCount:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
-            if outputFormat == 0:
-                OUT.append(
-                        self.get_data(check=True, checkSemAndFlush=False,
-                                      timeout=timeout))
-            else:
-                OUT[k] = self.get_data(check=True, copy=self.location >= 0,
-                                       checkSemAndFlush=False, timeout=timeout)
+            # if output[k] is a list slot, we must copy or we're gonna get a pointer
+            # if output[k] is a ndarray slice, we avoid a doublecopy with copy=False
+            output[k] = self.get_data(
+                    check=True, copy=(self.location >= 0) or
+                    (not output_as_cube), checkSemAndFlush=False,
+                    timeout=timeout)
             if monitorCount:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
-        if monitorCount:
+        if monitorCount:  # Finalize counts - countValues is bound
             x = countValues[:, 1:] - countValues[:, :-1]
             p1, p2 = np.sum(x < 1, axis=1), np.sum(x > 1, axis=1)
             y = countValues[1] - countValues[0]
@@ -725,7 +756,7 @@ class SHM:
             print(f"{p2[0]} < 1, {p2[1]} > 1 deltas in post.")
             print(f"{p3} < 1, {p4} > 1 pre/post diff.")
 
-        return OUT
+        return output
 
 
 def check_SHM_name(fname: str) -> str:
