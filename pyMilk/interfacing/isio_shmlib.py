@@ -70,14 +70,18 @@ except:
     print("pyMilk.interfacing.isio_shmlib:")
     print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
 
-from typing import Union, Tuple, List, Dict
+import typing as typ
 
-KWType = Union[str, int, float]
-KWDict = Dict[str, KWType]
-KWCommentDict = Dict[str, Tuple[KWType, str]]
-KWOptCommentDict = Dict[str, Union[KWType, Tuple[KWType, str]]]
+if typ.TYPE_CHECKING:
+    KWType = str | int | float
+    KWDict = dict[str, KWType]
+    KWCommentDict = dict[str, tuple[KWType, str]]
+    KWOptCommentDict = dict[str, KWType | tuple[KWType, str]]
 
+import datetime
 import numpy as np
+import numpy.typing as npt
+
 import time
 
 from pyMilk.util import img_shapes
@@ -97,7 +101,8 @@ class SHM:
     def __init__(
             self,
             fname: str,
-            data: np.ndarray = None,
+            data: None | np.ndarray |
+            tuple[tuple[int, ...], npt.DTypeLike] = None,
             nbkw: int = 50,
             shared: bool = True,
             location: int = -1,
@@ -156,7 +161,7 @@ class SHM:
         self.IMAGE = Image()
         self.FNAME = check_SHM_name(fname)
 
-        self.semID = None  # type: int
+        self.semID: int | None = None
         self.location = location
         self.symcode = (
                 symcode  # Handle image symetries; 0-7, see pyMilk.util.img_shapes
@@ -178,7 +183,7 @@ class SHM:
         else:
             if not isinstance(data, np.ndarray):
                 # data is (Shape, type) tuple
-                data = np.empty(data[0],
+                data = np.zeros(data[0],
                                 dtype=data[1])  # Data is Py-side shaped
 
             data_c = self._init_internals_creation(data)
@@ -209,12 +214,12 @@ class SHM:
                 self.shape
         """
 
-        self.nptype = data.dtype
-        self.shape_c = data.shape
+        self.nptype: npt.DTypeLike = data.dtype
+        self.shape_c: tuple[int, ...] = data.shape
 
         # Autosqueeze
         if autoSqueeze:
-            self.shape = np.squeeze(data).shape
+            self.shape: tuple[int, ...] = np.squeeze(data).shape
         else:
             self.shape = self.shape_c
 
@@ -233,7 +238,7 @@ class SHM:
                                                      self.symcode,
                                                      self.triDimState).shape
 
-    def _init_internals_creation(self, data: np.ndarray) -> None:
+    def _init_internals_creation(self, data: np.ndarray) -> np.ndarray:
         """
             Aux function for initializing
             data is python-side shape
@@ -327,7 +332,7 @@ class SHM:
         )
 
     def update_keyword(self, name: str, value: KWType,
-                       comment: str = None) -> None:
+                       comment: str | None = None) -> None:
         '''
         Mind the signature change from xaosim: ii (kw index) is not used.
         '''
@@ -398,8 +403,8 @@ class SHM:
 
         self.IMAGE.set_kws(kws)
 
-    def get_keywords(self, comments=False,
-                     n_tries=4) -> Union[KWDict, KWCommentDict]:
+    def get_keywords(self, comments: bool = False,
+                     n_tries: int = 4) -> Union[KWDict, KWCommentDict]:
         '''
         Return the keyword dictionary from the SHM
 
@@ -416,8 +421,7 @@ class SHM:
         # If we havent's succeeded: succeed or fail, last chance
         return self._get_keywords_nofail(comments=comments)
 
-    def _get_keywords_nofail(self,
-                             comments=False) -> Union[KWDict, KWCommentDict]:
+    def _get_keywords_nofail(self, comments=False) -> KWDict | KWCommentDict:
         kws = self.IMAGE.get_kws()
         kws_ret = {}
         for name in kws:
@@ -565,6 +569,13 @@ class SHM:
             data_towrite = data_towrite.copy('F')
         self.IMAGE.write(data_towrite)
 
+    def repost(self, atime: datetime.datetime) -> None:
+        """
+            Repost semaphore and writetimes
+            But does not handle data.
+        """
+        self.IMAGE.update()
+
     def save_as_fits(self, fitsname: str) -> int:
         """
         Convenient sometimes, to be able to export the data as a fits file.
@@ -609,7 +620,7 @@ class SHM:
             return kws["DET-NSMP"]
         return kws.get("NDR", 1)
 
-    def get_crop(self) -> Tuple[int, int, int, int]:
+    def get_crop(self) -> tuple[int, int, int, int]:
         """
         Return image crop boundaries
         """
@@ -662,8 +673,8 @@ class SHM:
             self.semID = self.IMAGE.getsemwaitindex(0)
 
     def multi_recv_data(self, n: int, outputFormat: int = 0,
-                        monitorCount: bool = False, timeout: float = 5.0
-                        ) -> Union[List[np.ndarray], np.ndarray]:
+                        monitorCount: bool = False,
+                        timeout: float = 5.0) -> list[np.ndarray] | np.ndarray:
         """
         Synchronous read of n successive images in a stream.
 
@@ -676,8 +687,10 @@ class SHM:
         - monitorSem: Monitor and report the counter states when ready to receive - WIP
         """
         # Prep output
+
+        OUT: list[np.ndarray] | np.ndarray
         if outputFormat == 0:
-            OUT = []  # type: Union[np.ndarray, List[np.ndarray]]
+            OUT = []
         else:
             OUT = np.zeros((n, *self.shape), dtype=self.nptype)
 

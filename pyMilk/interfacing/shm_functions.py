@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import glob
 
@@ -6,15 +8,17 @@ from pyMilk.util import img_shapes
 
 import numpy as np
 
-from typing import Tuple
+import typing as typ
+if typ.TYPE_CHECKING:
+    import numpy.typing as npt
 
 MILK_SHM_DIR = os.environ['MILK_SHM_DIR']
 
 
 def creashmim(
         name: str,
-        shape: Tuple[int],
-        data_type: type = np.float32,
+        shape: tuple[int, ...],
+        data_type: npt.DTypeLike = np.float32,
         nb_kw: int = 50,
         symcode: int = 4,  # Should it be 4 ??
         tri_dim: int = img_shapes.Which3DState.LAST2LAST,
