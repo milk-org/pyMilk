@@ -570,12 +570,15 @@ class SHM:
             data_towrite = data_towrite.copy('F')
         self.IMAGE.write(data_towrite)
 
-    def repost(self, atime: datetime.datetime) -> None:
+    def repost(self, atime: datetime.datetime | None = None) -> None:
         """
             Repost semaphore and writetimes
             But does not handle data.
         """
-        self.IMAGE.update()
+        if atime is None:
+            self.IMAGE.update()
+        else:
+            self.IMAGE.update_atime(atime)
 
     def save_as_fits(self, fitsname: str) -> int:
         """
@@ -722,19 +725,21 @@ class SHM:
 
         output: list[np.ndarray] | np.ndarray
         if output_as_cube is False:
-            output = [None for _ in range(n)]
+            output = [None for _ in range(n)]  # type: ignore
         else:
             output = np.zeros((n, *self.shape), dtype=self.nptype)
 
         if monitorCount:
             countValues = np.zeros((2, n), dtype=np.uint64)
+        else:
+            countValues = None
 
         # Check and flush the semaphore
         self._checkGrabSemaphore()
         self.IMAGE.semflush(self.semID)
 
         for k in range(n):
-            if monitorCount:
+            if countValues is not None:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
             # if output[k] is a list slot, we must copy or we're gonna get a pointer
@@ -743,10 +748,11 @@ class SHM:
                     check=True, copy=(self.location >= 0) or
                     (not output_as_cube), checkSemAndFlush=False,
                     timeout=timeout)
-            if monitorCount:
+            if countValues is not None:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
-        if monitorCount:  # Finalize counts - countValues is bound
+        if countValues is not None:
+
             x = countValues[:, 1:] - countValues[:, :-1]
             p1, p2 = np.sum(x < 1, axis=1), np.sum(x > 1, axis=1)
             y = countValues[1] - countValues[0]
