@@ -63,15 +63,14 @@ try:
         from ImageStreamIOWrap import Image, Image_kw
     except:  # Second shot - maybe you forgot the default path ?
         import sys
-
         sys.path.append("/usr/local/python")
         from ImageStreamIOWrap import Image, Image_kw
-except:
+except Exception as exc:
     print("pyMilk.interfacing.isio_shmlib:")
     print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
+    raise exc
 
 import typing as typ
-
 if typ.TYPE_CHECKING:
     KWType = str | int | float
     KWDict = dict[str, KWType]
@@ -104,7 +103,7 @@ class SHM:
             data: None | np.ndarray |
             tuple[tuple[int, ...], npt.DTypeLike] = None,
             nbkw: int = 50,
-            shared: bool = True,
+            shared: bool | typ.Literal[0, 1] = True,
             location: int = -1,
             verbose: bool = False,
             packed=False,

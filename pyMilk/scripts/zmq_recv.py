@@ -37,7 +37,7 @@ def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
 
     # We will get the pyMilk side ready in the loop upon the first reception
     pymilk_ready = False
-    out_shm = None
+    out_shm: SHM | None = None
 
     while True:
         message = socket.recv()
@@ -46,6 +46,7 @@ def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
         keywords, data = pickle.loads(message[sp_idx + 1:])
 
         if pymilk_ready:
+            assert out_shm is not None
             out_shm.set_data(data)
         else:
             # Needs a little kick on dtype parsing o_O
