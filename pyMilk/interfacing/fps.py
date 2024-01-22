@@ -28,6 +28,7 @@ import glob
 
 _CORES = os.sched_getaffinity(0)
 from CacaoProcessTools import fps as CPTFPS
+
 os.sched_setaffinity(0, _CORES)
 
 FPVal: typ.TypeAlias = typ.Union[str, bool, int, float]
@@ -39,6 +40,9 @@ class FPS:
         self.name = name
         self.fps = CPTFPS(name)
         self.key_types: typ.Dict[str, int] = self.fps.keys
+
+    def __str__(self) -> str:
+        return f'{self.name} | CONF: {("N", "Y")[self.conf_isrunning()]} | RUN: {("N", "Y")[self.run_isrunning()]}'
 
     def _errno_raiser(self, retcode: int, info: str) -> None:
         if retcode != 0:
@@ -58,10 +62,16 @@ class FPS:
         else:
             raise ValueError(f'get_param: key {key} not in FPS {self.name}.')
 
-    def conf_runs(self) -> bool:
+    '''
+    We don't have that in pyFPS!
+    def tmux_isrunning(self) -> bool:
+        return self.fps.TMUXrunning
+    '''
+
+    def conf_isrunning(self) -> bool:
         return self.fps.CONFrunning == 1
-    
-    def run_runs(self) -> bool:
+
+    def run_isrunning(self) -> bool:
         return self.fps.RUNrunning == 1
 
     def conf_start(self) -> None:
@@ -88,8 +98,10 @@ class FPS:
 
 class FPSManager:
 
-    def __init__(self) -> None:
+    def __init__(self, fps_name_glob: str = '*') -> None:
         self.fps_cache: typ.Dict[str, FPS] = {}
+        self.fps_name_glob = fps_name_glob
+        self.rescan_all()
 
     def find_fps(self, name: str) -> FPS:
         if (not name in self.fps_cache or self.fps_cache[name] is None):
@@ -97,9 +109,14 @@ class FPSManager:
 
         return self.fps_cache[name]
 
-    def rescan_all(self):
+    def rescan_all(self, fps_name_glob: str | None = None):
+
+        if fps_name_glob is None:
+            fps_name_glob = self.fps_name_glob
+
         self.purge_cache()
-        system_fps_files = glob.glob(os.environ['MILK_SHM_DIR'] + '/*.fps.shm')
+        system_fps_files = glob.glob(os.environ['MILK_SHM_DIR'] +
+                                     f'/{fps_name_glob}.fps.shm')
         for fps_file in system_fps_files:
             self.find_fps(os.path.basename(fps_file).split('.')[0])
 
