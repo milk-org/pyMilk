@@ -38,7 +38,8 @@ class CMakeBuildExt(build_ext):
 
         if platform.system() == "Windows":
             cmake_version = LooseVersion(
-                    re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+                    re.search(r'version\s*([\d.]+)',
+                              out.decode()).group(1))  # type: ignore
             if cmake_version < '3.1.0':
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 

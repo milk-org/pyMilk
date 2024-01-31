@@ -13,6 +13,9 @@ Options:
     --fr=<val>    Fps requested [default: 8]
     -s=<val>      Data orientation symcode (0-7) [default: 0]
 '''
+from __future__ import annotations
+
+import typing as typ
 
 import time
 import numpy as np
@@ -162,8 +165,9 @@ class ShmImshowClass:
             self.shmDark = SHM(self.shm.FNAME + '_dark')
             self._doDarkSub = True
         except:
-            print('Can\'t find a dark for this shm')
-            self.shmDark = None
+            print('Can\'t find a dark for this shm - creating one')
+            self.shmDark = SHM(self.shm.FNAME + '_dark',
+                               np.zeros_like(self.data, dtype=np.float32))
             self._doDarkSub = False
 
     def _slower(self) -> None:

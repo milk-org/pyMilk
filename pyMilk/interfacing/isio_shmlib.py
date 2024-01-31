@@ -478,7 +478,7 @@ class SHM:
             check: bool = False,
             reform: bool = True,
             sleepT: float = 0.001,
-            timeout: float = 5.0,
+            timeout: float | None = 5.0,
             copy: bool = True,
             checkSemAndFlush: bool = True,
     ) -> np.ndarray:
