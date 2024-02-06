@@ -456,7 +456,7 @@ class SHM:
         # ret will be 1 (sem destroyed) or 0 (sem posted)
         return ret
 
-    def check_sem_trywait(self) -> int:
+    def check_sem_trywait(self) -> bool:
         '''
         Performs a trywait on the currently held semaphore
         Returns True if the semaphore was posted (and therefore acquired and decremented)
@@ -507,7 +507,7 @@ class SHM:
             else:
                 err = self.IMAGE.semtimedwait(self.semID, timeout)
                 if err != 0:
-                    print("Warning - isio_shmlib.SHM.get_data has timed out and returned old data."
+                    print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
                           )
 
         if self.location >= 0:
