@@ -76,6 +76,9 @@ if typ.TYPE_CHECKING:
     KWDict = dict[str, KWType]
     KWCommentDict = dict[str, tuple[KWType, str]]
     KWOptCommentDict = dict[str, KWType | tuple[KWType] | tuple[KWType, str]]
+    # Mapping is essentially a read-only dict?
+    KWOptCommentMapping = typ.Mapping[str, KWType | tuple[KWType] |
+                                      tuple[KWType, str]]
 
 import datetime
 import numpy as np
@@ -355,7 +358,7 @@ class SHM:
             v, c = val
         return v, c
 
-    def set_keywords(self, kw_dict: KWOptCommentDict) -> None:
+    def set_keywords(self, kw_dict: KWOptCommentMapping) -> None:
         '''
         Sets a keyword dictionnary into the SHM
         This is a tentatively non-destructive write
@@ -379,7 +382,7 @@ class SHM:
 
         self.IMAGE.set_kws_list(kws)
 
-    def reset_keywords(self, kw_dict: KWOptCommentDict) -> None:
+    def reset_keywords(self, kw_dict: KWOptCommentMapping) -> None:
         '''
         Sets a keyword dictionnary into the SHM
         This is a complete write - it erases pre-existing keywords
