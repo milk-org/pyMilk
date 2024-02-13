@@ -90,6 +90,8 @@ from pyMilk.util import img_shapes
 
 import os
 
+MILK_SHM_DIR = os.environ["MILK_SHM_DIR"]
+
 
 class SHM:
     """
@@ -162,6 +164,7 @@ class SHM:
 
         self.IMAGE = Image()
         self.FNAME = check_SHM_name(fname)
+        self.FILEPATH = MILK_SHM_DIR + '/' + fname + '.im.shm'
 
         self.semID: int | None = None
         self.location = location
@@ -237,6 +240,27 @@ class SHM:
             self.shape = img_shapes.full_cube_decode(data[self.readSlice],
                                                      self.symcode,
                                                      self.triDimState).shape
+
+    def _attempt_autorelink_if_needed(self) -> None:
+        if self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino:
+            return
+
+        self.IMAGE.close()
+        if not self._checkExists():  # Perform open
+            raise RuntimeError("pyMilk: Error during autorelink.")
+
+        self._checkGrabSemaphore()
+
+        if self.shape_c != tuple(self.IMAGE.md.size):
+            raise RuntimeError(
+                    f"pyMilk: Error during autorelink --"
+                    f" size mismatch {self.shape_c} vs. {tuple(self.IMAGE.md.size)}"
+            )
+
+        new_dtype = np.array(self.IMAGE).dtype
+        if new_dtype != self.nptype:
+            raise RuntimeError(f"pyMilk: Error during autorelink --"
+                               f" type mismatch {new_dtype} vs. {self.nptype}")
 
     def _init_internals_creation(self, data: np.ndarray) -> np.ndarray:
         """
@@ -476,15 +500,10 @@ class SHM:
         self._checkGrabSemaphore()
         return self.IMAGE.semvalue(self.semID)
 
-    def get_data(
-            self,
-            check: bool = False,
-            reform: bool = True,
-            sleepT: float = 0.001,
-            timeout: float | None = 5.0,
-            copy: bool = True,
-            checkSemAndFlush: bool = True,
-    ) -> np.ndarray:
+    def get_data(self, check: bool = False, reform: bool = True,
+                 sleepT: float = 0.001, timeout: float | None = 5.0,
+                 copy: bool = True, checkSemAndFlush: bool = True,
+                 autorelink_if_need: bool = True) -> np.ndarray:
         """
         Reads and returns the data part of the SHM file
         Parameters:
@@ -499,6 +518,9 @@ class SHM:
             - reform: use the symcode, autoSqueeze, and triDim constructor arguments (see pyMilk.util.img_shapes for more info)
             - sleepT not useful as we use semaphore waiting now.
         """
+        if autorelink_if_need:
+            self._attempt_autorelink_if_needed()
+
         if check:
             if checkSemAndFlush:
                 # For irregular operations - we want to bypass this in multi_recv_data
@@ -792,18 +814,17 @@ def check_SHM_name(fname: str) -> str:
 
     # It has slashes
     pre, end = os.path.split(fname)
-    milk_shm_dir = os.environ["MILK_SHM_DIR"]
 
     # Third condition is for future use if we allow subdirs
-    if not pre.startswith(milk_shm_dir) or (len(pre) > len(milk_shm_dir) and
-                                            pre[len(milk_shm_dir)] != "/"):
+    if not pre.startswith(MILK_SHM_DIR) or (len(pre) > len(MILK_SHM_DIR) and
+                                            pre[len(MILK_SHM_DIR)] != "/"):
         raise ValueError(
-                f"Only files in MILK_SHR_DIR ({milk_shm_dir}) are supported")
+                f"Only files in MILK_SHR_DIR ({MILK_SHM_DIR}) are supported")
 
     # Do we need to make folders ? We can't... maybe some day
-    if "/" in pre[len(milk_shm_dir):]:
+    if "/" in pre[len(MILK_SHM_DIR):]:
         raise ValueError(
-                f"Only files at the root of MILK_SHR_DIR ({milk_shm_dir}) are supported"
+                f"Only files at the root of MILK_SHR_DIR ({MILK_SHM_DIR}) are supported"
         )
 
     # OK we're good, just filter the extension
