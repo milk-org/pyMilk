@@ -565,7 +565,8 @@ class SHM:
             else:
                 return np.array(self.IMAGE, copy=copy)[self.readSlice]
 
-    def set_data(self, data: np.ndarray, check_dt: bool = False) -> None:
+    def set_data(self, data: np.ndarray, check_dt: bool = False,
+                 autorelink_if_need: bool = False) -> None:
         """
         Upload new data to the SHM file.
         Parameters:
@@ -573,6 +574,9 @@ class SHM:
         - data: the array to upload to SHM
         - check_dt: boolean (default: false) recasts data
         """
+        if autorelink_if_need:
+            self._attempt_autorelink_if_needed()
+
         if check_dt:
             data = data.astype(self.nptype)
 
