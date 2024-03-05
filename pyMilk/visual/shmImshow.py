@@ -21,19 +21,19 @@ import time
 import numpy as np
 
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
+from pyqtgraph import QtGui as QtG, QtCore as QtC, QtWidgets as QtW
 
 from pyMilk.interfacing.isio_shmlib import SHM
 
 SYMCODE_TRANS = [
-        QtGui.QTransform(0, 1, 1, 0, 0, 0),
-        QtGui.QTransform(0, 1, -1, 0, 0, 0),
-        QtGui.QTransform(0, -1, 1, 0, 0, 0),
-        QtGui.QTransform(0, -1, -1, 0, 0, 0),
-        QtGui.QTransform(1, 0, 0, 1, 0, 0),
-        QtGui.QTransform(-1, 0, 0, 1, 0, 0),
-        QtGui.QTransform(1, 0, 0, -1, 0, 0),
-        QtGui.QTransform(-1, 0, 0, -1, 0, 0),
+        QtG.QTransform(0, 1, 1, 0, 0, 0),
+        QtG.QTransform(0, 1, -1, 0, 0, 0),
+        QtG.QTransform(0, -1, 1, 0, 0, 0),
+        QtG.QTransform(0, -1, -1, 0, 0, 0),
+        QtG.QTransform(1, 0, 0, 1, 0, 0),
+        QtG.QTransform(-1, 0, 0, 1, 0, 0),
+        QtG.QTransform(1, 0, 0, -1, 0, 0),
+        QtG.QTransform(-1, 0, 0, -1, 0, 0),
 ]
 
 
@@ -51,7 +51,7 @@ class ShmImshowClass:
         self.shm = SHM(shmname)
 
         # Will be allocated in self._toggleDarkSub if used
-        self.shmDark = None  # type: SHM
+        self.shmDark: SHM | None = None
         self.symcode = symcode
         self.grabData()  # We need self.data set to initialize the plot
 
@@ -63,7 +63,7 @@ class ShmImshowClass:
         # Set the plot area
         self.win = pg.GraphicsLayoutWidget()
         self.win.show()
-        self.view = self.win.addViewBox(lockAspect=True)
+        self.view = self.win.addViewBox(lockAspect=True, row=0, col=0)
         #self.view.show()
         self.imgItem = pg.ImageItem(border='w')
         self.imgItem.setLookupTable(1)
@@ -81,8 +81,7 @@ class ShmImshowClass:
 
         # TODO
         self.titleStr = f'Display of SHM data: {shmname}'
-        self.title = pg.TextItem(color='w', text=self.titleStr)
-        self.view.addItem(self.title)
+        self.title = self.win.addLabel(self.titleStr, col=0, row=1, color='w')
 
         # Bind a couple shortcuts
         self.initShortcuts()
@@ -91,14 +90,13 @@ class ShmImshowClass:
         # ====================
 
         # Timing - monitor fps and trigger refresh
-        self.timer = QtCore.QTimer()
+        self.timer = QtC.QTimer()
         self.targetFps = targetFps
         self.timer.setInterval(int(1000. / self.targetFps))
         self.timer.timeout.connect(self.update)
         self.timer.start()
 
     def initShortcuts(self) -> None:
-        QW, QG = QtWidgets, QtGui
 
         # List of shortcuts in the form (Key, callback)
         shortcut_descr = [
@@ -121,7 +119,7 @@ class ShmImshowClass:
 
         # Create and bind the shorcuts
         for (key, func) in shortcut_descr:
-            tmp = QW.QShortcut(QG.QKeySequence(key), self.win)
+            tmp = QtW.QShortcut(QtG.QKeySequence(key), self.win)
             tmp.activated.connect(func)
 
     def _printHelp(self) -> None:
@@ -239,7 +237,7 @@ if __name__ == "__main__":
 
     # Launch app and let the class spawn the widget
     # I'm doing it this way hoping to be able to reuse this for multi-display windows
-    app = QtWidgets.QApplication([doc['<name>'] + '.im.shm'])
+    app = QtW.QApplication([doc['<name>'] + '.im.shm'])
     app.setQuitOnLastWindowClosed(True)
     plotter = ShmImshowClass(doc['<name>'], symcode=doc['-s'],
                              targetFps=doc['--fr'])
