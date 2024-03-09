@@ -1,12 +1,12 @@
 # pyMilk
 
 pyMilk means to provide a user-side interaction channel between your python scripts and the shared memory structures used in MILK.
-It may also become our preferred repository for a variety of python modules relating to and interacting with the core features of MILK and CACAO.
+It may also become our preferred repository for a variety of python modules relating to and interacting with the core features of MILK and CACAO (processInfo, FPS).
 
 For interfacing with the MILK streams, we use a [pybind](https://github.com/pybind/pybind11) linking deployed with the C library [ImageStreamIO](https://github.com/milk-org/ImageStreamIO) (ISIO).
 
 ISIO, and the python wrapper, are included here as a submodule.
-All credit to **Arnaud Sevin** for ImageStreamIOWrap.cpp and various upgrades to ISIO.
+Credit due to **Arnaud Sevin** for ImageStreamIOWrap.cpp and various upgrades to ISIO.
 
 ## Dependencies
 
@@ -14,21 +14,21 @@ There are to ways to go: you already have a MILK install on the target computer,
 If you do have an existing MILK install, we're assuming you want to interact with streams from other sources than pyMilk.
 The corresponding section guarantees compatibility.
 
-### No existing milk install
+### No existing MILK install
 
 Clone the repo with ISIO as submodule
 ```
 git clone https://github.com/milk-org/pyMilk --recurse-submodules
 ```
 
-Install pyMilk - We recommend a "developer mode" (`-e` flag) install that does not copy stuff in your python install. The source code actually used is the one in the pyMilk folder. If you intend to change python sources, that's way more convenient.
+Install pyMilk **in "developer mode"** (`-e` flag; CMake is misbehaved with `pip install .`) install that does not copy stuff in your python install. The source code actually used is the one in the pyMilk folder. If you intend to change python sources, that's way more convenient.
 
 ```
 cd pyMilk
 pip install -e .
 ```
 
-### You already have milk somewhere
+### You already have MILK somewhere
 
 This is just a suggestion - you may do otherwise.
 

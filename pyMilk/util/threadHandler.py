@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import typing as typ
+
 import time
 from threading import Thread
 
@@ -19,21 +23,23 @@ class ThreadHandler:
         ----------
     '''
 
-    def __init__(self, sleep_ms: float = 10, daemonize: bool= True) -> None:
+    def __init__(self, sleep_ms: float = 10, daemonize: bool = True) -> None:
 
         self._t_pauseSleepMs = sleep_ms
         self._t_threadSuspend = True
         self._t_threadDie = False
 
-        self.thread = None  # type: Thread
+        self.thread: Thread | None = None
 
         self._t_initThread(daemonize)
 
-    def _t_initThread(self, daemonize) -> None:
+    def _t_initThread(self, daemonize: bool) -> None:
         try:
-            self.thread.join()
+            if self.thread is not None:
+                self.thread.join()
         except:
             pass
+
         self.thread = Thread(target=self._t_runThread)
         self.thread.start()
         self.thread.setDaemon(daemonize)
@@ -47,7 +53,8 @@ class ThreadHandler:
     def __del__(self) -> None:
         self._t_threadSuspend = True
         self._t_threadDie = True
-        self.thread.join()
+        if self.thread is not None:
+            self.thread.join()
         print('ThreadHandler.__del__: Destruct OK')
 
     def _t_runThread(self) -> None:

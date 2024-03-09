@@ -7,15 +7,17 @@ from .isio_shmlib import SHM
 
 def test_data_conservation():
 
-    all_shapes = [(3, ), (2, 3), (2, 3, 4), (3, 4, 5), (5, 6, 7)]
+    all_shapes: list[tuple[int] | tuple[int, int] | tuple[int, int, int]] = [
+            (3, ), (2, 3), (2, 3, 4), (3, 4, 5), (5, 6, 7)
+    ]
 
     for s in all_shapes:
         for sym in range(8):
             for tri in range(4):
-                data = np.random.randn(*s)
+                data: np.ndarray = np.random.randn(*s)  # type: ignore
 
                 shm_write = SHM("pyMilk_autotest", data, symcode=sym,
-                                triDim=tri, location=-1, shared=1)
+                                triDim=tri, location=-1, shared=True)
                 shm_read = SHM("pyMilk_autotest", symcode=sym, triDim=tri)
 
                 dd = shm_read.get_data()
@@ -25,7 +27,7 @@ def test_data_conservation():
                         ), f"{shm_write.shape_c}, {shm_read.shape_c}"
                 assert np.all(np.abs(dd - data) < 1e-7), f"{s}, {sym}, {tri}"
 
-                data_backw = np.random.randn(*s)
+                data_backw: np.ndarray = np.random.randn(*s)  # type: ignore
 
                 shm_read.set_data(data_backw)
                 dd2 = shm_write.get_data(check=False)
@@ -81,6 +83,10 @@ def test_fits():
         fits_lib.multi_write('pyMilk_test_fits3.fits', shm_read.get_data(),
                              symcode=7)
         data_f3 = fits_lib.multi_read('pyMilk_test_fits3.fits', symcode=3)
+
+        assert isinstance(data_f, np.ndarray)
+        assert isinstance(data_f2, np.ndarray)
+        assert isinstance(data_f3, np.ndarray)
 
         shm_write.IMAGE.destroy()
         os.remove('pyMilk_test_fits.fits')

@@ -39,9 +39,10 @@ Second axis is column and left-to-right, hence "+x"
 
 This is good for not ovethinking indexing in your code.
 """
+from __future__ import annotations
 
 import numpy as np
-from typing import Tuple
+import typing as typ
 
 
 def image_encode(im: np.ndarray, s: int) -> np.ndarray:
@@ -65,7 +66,7 @@ def image_decode(x: np.ndarray, s: int) -> np.ndarray:
     return image_encode(x, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
-def cube_front_image_encode(cube: np.ndarray, s: int):
+def cube_front_image_encode(cube: np.ndarray, s: int) -> np.ndarray:
     """
     Encode image cube - dim 0 is the cube axis
     """
@@ -84,11 +85,11 @@ def cube_front_image_encode(cube: np.ndarray, s: int):
         raise ValueError("symcode s must be 0-7")
 
 
-def cube_front_image_decode(cube: np.ndarray, s: int):
+def cube_front_image_decode(cube: np.ndarray, s: int) -> np.ndarray:
     return cube_front_image_encode(cube, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
-def cube_back_image_encode(cube: np.ndarray, s: int):
+def cube_back_image_encode(cube: np.ndarray, s: int) -> np.ndarray:
     """
     Encode image cube - dim 2 is the cube axis
     """
@@ -107,7 +108,7 @@ def cube_back_image_encode(cube: np.ndarray, s: int):
         raise ValueError("symcode s must be 0-7")
 
 
-def cube_back_image_decode(cube: np.ndarray, s: int):
+def cube_back_image_decode(cube: np.ndarray, s: int) -> np.ndarray:
     return cube_back_image_encode(cube, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
@@ -115,9 +116,14 @@ def cube_back_image_decode(cube: np.ndarray, s: int):
 Squeezing and unsqueezing with numpy slices
 """
 
+if typ.TYPE_CHECKING:
+    T_ReadSlice = ellipsis | tuple[slice | typ.Literal[0], ...]
+    T_WriteSlice = ellipsis | tuple[slice | None, ...]
+    T_RW_Slices = tuple[T_ReadSlice, T_WriteSlice]
 
-def gen_squeeze_unsqueeze_slices(shape_orig: Tuple[int, ...],
-                                 autoSqueeze: bool):
+
+def gen_squeeze_unsqueeze_slices(shape_orig: tuple[int, ...],
+                                 autoSqueeze: bool) -> T_RW_Slices:
     """
         I do NOT bother to check if shape_dest actually describes a squeezing of shape_orig
     """
@@ -158,15 +164,15 @@ class Which3DState:
     FRONT2LAST = 3
 
 
-def cube_roll_forw(cube: np.ndarray):
+def cube_roll_forw(cube: np.ndarray) -> np.ndarray:
     return np.moveaxis(cube, 2, 0)
 
 
-def cube_roll_back(cube: np.ndarray):
+def cube_roll_back(cube: np.ndarray) -> np.ndarray:
     return np.moveaxis(cube, 0, 2)
 
 
-def full_cube_encode(cube: np.ndarray, s: int, tri_dim: int):
+def full_cube_encode(cube: np.ndarray, s: int, tri_dim: int) -> np.ndarray:
     if tri_dim in [Which3DState.FRONT2FRONT, Which3DState.FRONT2LAST]:
         cube = cube_front_image_encode(cube, s)
     else:
@@ -180,7 +186,7 @@ def full_cube_encode(cube: np.ndarray, s: int, tri_dim: int):
     return cube
 
 
-def full_cube_decode(cube: np.ndarray, s: int, tri_dim: int):
+def full_cube_decode(cube: np.ndarray, s: int, tri_dim: int) -> np.ndarray:
     if tri_dim == Which3DState.LAST2FRONT:
         cube = cube_roll_back(cube)
     elif tri_dim == Which3DState.FRONT2LAST:
