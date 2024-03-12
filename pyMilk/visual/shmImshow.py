@@ -203,9 +203,10 @@ class ShmImshowClass:
             image = self.data - self.dark  # Wait this is super wrong in log scale !
         else:
             image = self.data
+        image[0, :] = np.median(image[1:,0])
 
         if hasattr(self, '_logZ') and self._logZ:
-            image = np.log10(np.clip(image, 0.1, None))
+            image = np.log10(np.clip(image, 1.0, None))
 
         if self.hist_autoscale:
             self.imgItem.setImage(image)
