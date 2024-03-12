@@ -86,7 +86,8 @@ import numpy.typing as npt
 
 import time
 
-from pyMilk.util import img_shapes
+from ..util import img_shapes
+from .. import errors
 
 import os
 
@@ -247,20 +248,22 @@ class SHM:
 
         self.IMAGE.close()
         if not self._checkExists():  # Perform open
-            raise RuntimeError("pyMilk: Error during autorelink.")
+            raise errors.AutoRelinkError(
+                    f"pyMilk @ SHM {self.FNAME}: checkExist")
 
         self._checkGrabSemaphore()
 
         if self.shape_c != tuple(self.IMAGE.md.size):
-            raise RuntimeError(
-                    f"pyMilk: Error during autorelink --"
+            raise errors.AutoRelinkSizeError(
+                    f"pyMilk @ SHM {self.FNAME}: Error during autorelink --"
                     f" size mismatch {self.shape_c} vs. {tuple(self.IMAGE.md.size)}"
             )
 
         new_dtype = np.array(self.IMAGE).dtype
         if new_dtype != self.nptype:
-            raise RuntimeError(f"pyMilk: Error during autorelink --"
-                               f" type mismatch {new_dtype} vs. {self.nptype}")
+            raise errors.AutoRelinkTypeError(
+                    f"pyMilk @ SHM {self.FNAME}: Error during autorelink --"
+                    f" type mismatch {new_dtype} vs. {self.nptype}")
 
     def _init_internals_creation(self, data: np.ndarray) -> np.ndarray:
         """
