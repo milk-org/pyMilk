@@ -165,7 +165,7 @@ class SHM:
 
         self.IMAGE = Image()
         self.FNAME = check_SHM_name(fname)
-        self.FILEPATH = MILK_SHM_DIR + '/' + fname + '.im.shm'
+        self.FILEPATH = MILK_SHM_DIR + '/' + self.FNAME + '.im.shm'
 
         self.semID: int | None = None
         self.location = location
