@@ -611,7 +611,7 @@ class SHM:
         else:
             self.IMAGE.update_atime(atime)
 
-    def save_as_fits(self, fitsname: str, **kwargs) -> int:) -> int:
+    def save_as_fits(self, fitsname: str, **kwargs) -> int:
         """
         Convenient sometimes, to be able to export the data as a fits file.
 
