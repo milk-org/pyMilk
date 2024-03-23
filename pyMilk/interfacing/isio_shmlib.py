@@ -540,7 +540,7 @@ class SHM:
 
         if self.location >= 0:
             if copy:
-                if self.nDim == 2:
+                if self.nDim == 2:    
                     return img_shapes.image_decode(
                             self.IMAGE.copy()[self.readSlice], self.symcode)
                 elif self.nDim == 3:
@@ -611,7 +611,7 @@ class SHM:
         else:
             self.IMAGE.update_atime(atime)
 
-    def save_as_fits(self, fitsname: str) -> int:
+    def save_as_fits(self, fitsname: str, **kwargs) -> int:) -> int:
         """
         Convenient sometimes, to be able to export the data as a fits file.
 
@@ -620,7 +620,7 @@ class SHM:
         - fitsname: a filename (overwrite=True)
         """
         from pyMilk.interfacing import fits_lib
-        fits_lib.multi_write(fitsname, self.get_data(), symcode=self.symcode,
+        fits_lib.multi_write(fitsname, self.get_data(**kwargs), symcode=self.symcode,
                              tri_dim=self.triDimState)
         return 0
 
@@ -635,7 +635,8 @@ class SHM:
         kws = self.get_keywords()
         if "EXPTIME" in kws:
             retval = kws["EXPTIME"]
-        retval = kws.get("tint", 1.0)
+        else:
+            retval = kws.get("tint", 0.1234)
 
         assert isinstance(retval, float)
         return retval
@@ -647,7 +648,8 @@ class SHM:
         kws = self.get_keywords()
         if "FRATE" in kws:
             retval = kws["FRATE"]
-        retval = kws.get("fps", 0.0)
+        else:
+            retval = kws.get("fps", 0.0)
 
         assert isinstance(retval, float)
         return retval
@@ -659,7 +661,8 @@ class SHM:
         kws = self.get_keywords()
         if "DET-NSMP" in kws:
             retval = kws["DET-NSMP"]
-        retval = kws.get("NDR", 1)
+        else:
+            retval = kws.get("NDR", 1)
 
         assert isinstance(retval, int)
         return retval
