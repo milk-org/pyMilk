@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 '''
 shmPlot.py
 Visual plotter for 1D or 2D data in shm.
@@ -9,7 +9,7 @@ Usage:
 
 Options:
     <name>        SHM file to link: $MILK_SHM_DIR/<name>.im.shm
-    --fr=<val>    Fps requested [default: 30]
+    --fr=<val>    Fps requested [default: 10]
     -t            Transpose data
 '''
 
@@ -34,7 +34,7 @@ class ShmPlotClass:
     '''
 
     def __init__(self, shmname: str, transpose: bool = False,
-                 targetFps: float = 30) -> None:
+                 targetFps: float = 5.0) -> None:
 
         # Init grabber and get a buffer for warm-up
         self.shm = SHM(shmname)
@@ -50,7 +50,7 @@ class ShmPlotClass:
         self.fps = 0.
 
         # Set the plot area
-        self.plot = pg.graphicsWindows.PlotWidget()
+        self.plot = pg.PlotWidget()
         self.plot.show()
 
         self.title = f'Display of SHM data: {shmname}'
@@ -71,7 +71,7 @@ class ShmPlotClass:
         # Timing - monitor fps and trigger refresh
         self.timer = QtCore.QTimer()
         self.targetFps = targetFps
-        self.timer.setInterval(1000. / self.targetFps)
+        self.timer.setInterval(int(1000. / self.targetFps))
         self.timer.timeout.connect(self.update)
         self.timer.start()
 
@@ -125,8 +125,11 @@ class ShmPlotClass:
     def _swapGrid(self) -> None:
         self._gridState = (self._gridState + 1) % 4
 
-        self.plotItem.showGrid(*[(False, False), (False, True), (
-                True, True), (True, False)][self._gridState])
+        self.plotItem.showGrid(
+                *[(False, False), (False,
+                                   True), (True,
+                                           True), (True,
+                                                   False)][self._gridState])
 
     def _swapLogX(self) -> None:
         self._logx = not self._logx
@@ -221,7 +224,7 @@ if __name__ == "__main__":
 
     # Launch app and let the class spawn the widget
     # I'm doing it this way hoping to be able to reuse this for multi-display windows
-    app = QtGui.QApplication([doc['<name>'] + '.im.shm'])
+    app = QtWidgets.QApplication([doc['<name>'] + '.im.shm'])
     app.setQuitOnLastWindowClosed(True)
     plotter = ShmPlotClass(doc['<name>'], transpose=doc['-t'],
                            targetFps=doc['--fr'])

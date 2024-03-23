@@ -56,15 +56,43 @@ Credit for ImageStreamIO C library: O. Guyon
 
 Credit for ImageStreamIOWrap pybind interface: A. Sevin
 """
+from __future__ import annotations
 
-from typing import Union, Tuple, List, Dict
+try:
+    try:  # First shot
+        from ImageStreamIOWrap import Image, Image_kw
+    except:  # Second shot - maybe you forgot the default path ?
+        import sys
+        sys.path.append("/usr/local/python")
+        from ImageStreamIOWrap import Image, Image_kw
+except Exception as exc:
+    print("pyMilk.interfacing.isio_shmlib:")
+    print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
+    raise exc
+
+import typing as typ
+if typ.TYPE_CHECKING:
+    KWType = str | int | float
+    KWDict = dict[str, KWType]
+    KWCommentDict = dict[str, tuple[KWType, str]]
+    KWOptCommentDict = dict[str, KWType | tuple[KWType] | tuple[KWType, str]]
+    # Mapping is essentially a read-only dict?
+    KWOptCommentMapping = typ.Mapping[str, KWType | tuple[KWType] |
+                                      tuple[KWType, str]]
+
+import datetime
 import numpy as np
+import numpy.typing as npt
+
 import time
 
-from pyMilk.util import img_shapes
 from pyMilk.interfacing.multiverse_config import MILK_ENVIRONMENTS
+from ..util import img_shapes
+from .. import errors
 
 import os
+
+MILK_SHM_DIR = os.environ["MILK_SHM_DIR"]
 
 
 def SHM(*args, forced_version=None, **kwargs):
@@ -108,9 +136,10 @@ class SHM_single:
     def __init__(
             self,
             fname: str,
-            data: np.ndarray = None,
-            nbkw: int = 0,
-            shared: bool = True,
+            data: None | np.ndarray |
+            tuple[tuple[int, ...], npt.DTypeLike] = None,
+            nbkw: int = 50,
+            shared: bool | typ.Literal[0, 1] = True,
             location: int = -1,
             verbose: bool = False,
             packed=False,
@@ -172,35 +201,37 @@ class SHM_single:
             Image_kw_class = MILK_ENVIRONMENTS[0]['Image_kw']
         self.Image_kw_class = Image_kw_class
 
-        self.IMAGE = Image_class()
-        self.FNAME = _checkSHMName(fname)
+        self.IMAGE = Image()
+        self.FNAME = check_SHM_name(fname)
+        self.FILEPATH = MILK_SHM_DIR + '/' + self.FNAME + '.im.shm'
 
-        self.semID = None  # type: int
+        self.semID: int | None = None
         self.location = location
 
         # Handle image symetries; 0-7 and cubeaxis swaps, see pyMilk.util.img_shapes
         self.symcode = (symcode)
         self.triDimState = triDim
 
-        # Image opening for reading
-        isCreating = data is not None
-        if not isCreating:
+        if data is None:  # Image read
             if not self._checkExists():
                 raise FileNotFoundError(
                         f"Requested SHM {fname} does not exist")
             # _checkExists already performed the self.IMAGE.open()
 
             self._checkGrabSemaphore()
-            data = self.IMAGE.copy()  # Data is C-side shaped
+            data_arr: np.ndarray = self.IMAGE.copy()  # Data is C-side shaped
 
-            self._init_internals_read(data, autoSqueeze)
-        else:
+            self._init_internals_read(data_arr, autoSqueeze)
+
+        else:  # Image create
             if not isinstance(data, np.ndarray):
                 # data is (Shape, type) tuple
-                data = np.empty(data[0],
-                                dtype=data[1])  # Data is Py-side shaped
+                data_arr = np.zeros(data[0],
+                                    dtype=data[1])  # Data is Py-side shaped
+            else:
+                data_arr = data
 
-            data_c = self._init_internals_creation(data)
+            data_c = self._init_internals_creation(data_arr)
 
             if not self._checkExists():
                 print(f"{self.FNAME}.im.shm will be created")
@@ -208,14 +239,12 @@ class SHM_single:
                 print(f"{self.FNAME}.im.shm will be overwritten")
                 # _checkExist opened the image, we can destroy.
                 self.IMAGE.destroy()
-                # Sleep 1/10th of a second - convenience to let streamCTRL re-scan (20 Hz) and detect the destruction
-                # before re-creating with the same name - but not the same ID.
-                time.sleep(0.1)
 
             self.IMAGE.create(self.FNAME, data_c, location=location,
                               shared=shared, NBkw=nbkw)
 
-    def _init_internals_read(self, data: np.ndarray, autoSqueeze: bool):
+    def _init_internals_read(self, data: np.ndarray,
+                             autoSqueeze: bool) -> None:
         """
             Aux function for initializing
             data is C-side shape
@@ -227,12 +256,12 @@ class SHM_single:
                 self.shape
         """
 
-        self.nptype = data.dtype
-        self.shape_c = data.shape
+        self.nptype: npt.DTypeLike = data.dtype
+        self.shape_c: tuple[int, ...] = data.shape
 
         # Autosqueeze
         if autoSqueeze:
-            self.shape = np.squeeze(data).shape
+            self.shape: tuple[int, ...] = np.squeeze(data).shape
         else:
             self.shape = self.shape_c
 
@@ -251,7 +280,30 @@ class SHM_single:
                                                      self.symcode,
                                                      self.triDimState).shape
 
-    def _init_internals_creation(self, data):
+    def _attempt_autorelink_if_needed(self) -> None:
+        if self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino:
+            return
+
+        self.IMAGE.close()
+        if not self._checkExists():  # Perform open
+            raise errors.AutoRelinkError(
+                    f"pyMilk @ SHM {self.FNAME}: checkExist")
+
+        self._checkGrabSemaphore()
+
+        if self.shape_c != tuple(self.IMAGE.md.size):
+            raise errors.AutoRelinkSizeError(
+                    f"pyMilk @ SHM {self.FNAME}: Error during autorelink --"
+                    f" size mismatch {self.shape_c} vs. {tuple(self.IMAGE.md.size)}"
+            )
+
+        new_dtype = np.array(self.IMAGE).dtype
+        if new_dtype != self.nptype:
+            raise errors.AutoRelinkTypeError(
+                    f"pyMilk @ SHM {self.FNAME}: Error during autorelink --"
+                    f" type mismatch {new_dtype} vs. {self.nptype}")
+
+    def _init_internals_creation(self, data: np.ndarray) -> np.ndarray:
         """
             Aux function for initializing
             data is python-side shape
@@ -282,6 +334,8 @@ class SHM_single:
         elif self.nDim == 3:
             data_c = img_shapes.full_cube_encode(data, self.symcode,
                                                  self.triDimState)
+        else:
+            raise NotImplementedError()
 
         self.shape_c = data_c.shape
         return data_c
@@ -342,11 +396,12 @@ class SHM_single:
                 'This function is not used in pyMilk. Use get_keyords/set_keywords.'
         )
 
-    def update_keyword(self, name: str, value: Union[int, str, float],
-                       comment: str = None) -> None:
+    def update_keyword(self, name: str, value: KWType,
+                       comment: str | None = None) -> None:
         '''
         Mind the signature change from xaosim: ii (kw index) is not used.
         '''
+
         kws = self.IMAGE.get_kws_list()
         kws_names = [kw.name for kw in kws]
         if name not in kws_names:
@@ -358,7 +413,17 @@ class SHM_single:
             kws[idx] = self.Image_kw_class(name, value, comment)
         self.IMAGE.set_kws_list(kws)
 
-    def set_keywords(self, kw_dict: Dict[str, None]):
+    def _kw_opt_comment_unpacker(self, val: KWType | tuple[KWType] |
+                                 tuple[KWType, str]) -> tuple[KWType, str]:
+        if not isinstance(val, tuple):
+            v, c = val, ''
+        elif len(val) == 1:
+            v, c = val[0], ''
+        else:
+            v, c = val
+        return v, c
+
+    def set_keywords(self, kw_dict: KWOptCommentMapping) -> None:
         '''
         Sets a keyword dictionnary into the SHM
         This is a tentatively non-destructive write
@@ -374,16 +439,7 @@ class SHM_single:
             else:
                 idx = -1  # Append
 
-            if not isinstance(kw_dict[name], tuple):
-                v = kw_dict[name]
-                c = ''
-            elif len(kw_dict[name]) == 1:
-                v = kw_dict[name][0]
-                c = ''
-            else:
-                v = kw_dict[name][0]
-                c = kw_dict[name][1]
-
+            v, c = self._kw_opt_comment_unpacker(kw_dict[name])
             if idx >= 0:
                 kws[idx] = self.Image_kw_class(name, v, c)
             else:
@@ -391,7 +447,7 @@ class SHM_single:
 
         self.IMAGE.set_kws_list(kws)
 
-    def reset_keywords(self, kw_dict: Dict[str, None]):
+    def reset_keywords(self, kw_dict: KWOptCommentMapping) -> None:
         '''
         Sets a keyword dictionnary into the SHM
         This is a complete write - it erases pre-existing keywords
@@ -400,20 +456,23 @@ class SHM_single:
         '''
         kws = {}
         for name in kw_dict:
-            if not isinstance(kw_dict[name], tuple):
-                v = kw_dict[name]
-                c = ''
-            elif len(kw_dict[name]) == 1:
-                v = kw_dict[name][0]
-                c = ''
-            else:
-                v = kw_dict[name][0]
-                c = kw_dict[name][1]
-            kws[name] = self.Image_kw_class(name, v, c)
+            kws[name] = self.Image_kw_class(
+                    name, *self._kw_opt_comment_unpacker(kw_dict[name]))
 
         self.IMAGE.set_kws(kws)
 
-    def get_keywords(self, comments=False):
+    @typ.overload
+    def get_keywords(self, comments: typ.Literal[False] = False,
+                     n_tries: int = 4) -> KWDict:
+        ...
+
+    @typ.overload
+    def get_keywords(self, comments: typ.Literal[True],
+                     n_tries: int = 4) -> KWCommentDict:
+        ...
+
+    def get_keywords(self, comments: bool = False,
+                     n_tries: int = 4) -> KWDict | KWCommentDict:
         '''
         Return the keyword dictionary from the SHM
 
@@ -421,14 +480,16 @@ class SHM_single:
         Will return {name: (value, comments)} if comments is True
         '''
 
-        # We'll give ourselves two tries - for race conditions with camera servers
-        try:
-            return self._get_keywords_nofail()
-        except:
-            time.sleep(.002)
-            return self._get_keywords_nofail()
+        # We'll give ourselves several tries - for race conditions with camera servers
+        for i in range(n_tries):
+            try:
+                return self._get_keywords_nofail(comments=comments)
+            except:
+                time.sleep(.002)
+        # If we havent's succeeded: succeed or fail, last chance
+        return self._get_keywords_nofail(comments=comments)
 
-    def _get_keywords_nofail(self, comments=False):
+    def _get_keywords_nofail(self, comments=False) -> KWDict | KWCommentDict:
         kws = self.IMAGE.get_kws()
         kws_ret = {}
         for name in kws:
@@ -451,7 +512,7 @@ class SHM_single:
     def get_counter(self) -> int:
         return self.IMAGE.md.cnt0
 
-    def non_block_wait_semaphore(self, sleeptime=0.1):
+    def non_block_wait_semaphore(self, sleeptime=0.1) -> int:
         self._checkGrabSemaphore()
         self.IMAGE.semflush(self.semID)
         ret = -1
@@ -463,15 +524,27 @@ class SHM_single:
         # ret will be 1 (sem destroyed) or 0 (sem posted)
         return ret
 
-    def get_data(
-            self,
-            check: bool = False,
-            reform: bool = True,
-            sleepT: float = 0.001,
-            timeout: float = 5.0,
-            copy: bool = True,
-            checkSemAndFlush: bool = True,
-    ) -> np.ndarray:
+    def check_sem_trywait(self) -> bool:
+        '''
+        Performs a trywait on the currently held semaphore
+        Returns True if the semaphore was posted (and therefore acquired and decremented)
+        Returns False if the semaphore was 0 and the acquisition failed.
+        '''
+        self._checkGrabSemaphore()
+        return self.IMAGE.semtrywait(self.semID) == 0
+
+    def check_sem_value(self) -> int:
+        '''
+        Check the semaphore value of the currently held read semaphore.
+        Returns the value, or -1 if error.
+        '''
+        self._checkGrabSemaphore()
+        return self.IMAGE.semvalue(self.semID)
+
+    def get_data(self, check: bool = False, reform: bool = True,
+                 sleepT: float = 0.001, timeout: float | None = 5.0,
+                 copy: bool = True, checkSemAndFlush: bool = True,
+                 autorelink_if_need: bool = True) -> np.ndarray:
         """
         Reads and returns the data part of the SHM file
         Parameters:
@@ -486,10 +559,12 @@ class SHM_single:
             - reform: use the symcode, autoSqueeze, and triDim constructor arguments (see pyMilk.util.img_shapes for more info)
             - sleepT not useful as we use semaphore waiting now.
         """
+        if autorelink_if_need:
+            self._attempt_autorelink_if_needed()
+
         if check:
-            if (
-                    checkSemAndFlush
-            ):  # For irregular operations - we want to bypass this in multi_recv_data
+            if checkSemAndFlush:
+                # For irregular operations - we want to bypass this in multi_recv_data
                 # Check, flush, and wait the semaphore
                 self._checkGrabSemaphore()
                 self.IMAGE.semflush(self.semID)
@@ -498,7 +573,7 @@ class SHM_single:
             else:
                 err = self.IMAGE.semtimedwait(self.semID, timeout)
                 if err != 0:
-                    print("Warning - isio_shmlib.SHM.get_data has timed out and returned old data."
+                    print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
                           )
 
         if self.location >= 0:
@@ -531,7 +606,8 @@ class SHM_single:
             else:
                 return np.array(self.IMAGE, copy=copy)[self.readSlice]
 
-    def set_data(self, data: np.ndarray, check_dt: bool = False) -> None:
+    def set_data(self, data: np.ndarray, check_dt: bool = False,
+                 autorelink_if_need: bool = False) -> None:
         """
         Upload new data to the SHM file.
         Parameters:
@@ -539,6 +615,9 @@ class SHM_single:
         - data: the array to upload to SHM
         - check_dt: boolean (default: false) recasts data
         """
+        if autorelink_if_need:
+            self._attempt_autorelink_if_needed()
+
         if check_dt:
             data = data.astype(self.nptype)
 
@@ -548,18 +627,29 @@ class SHM_single:
             data = np.array(data)  # A scalar array with () shape
 
         if self.nDim == 2:
-            self.IMAGE.write(
-                    img_shapes.image_encode(data,
-                                            self.symcode)[self.writeSlice])
+            data_towrite = img_shapes.image_encode(
+                    data, self.symcode)[self.writeSlice]
         elif self.nDim == 3:
-            self.IMAGE.write(
-                    img_shapes.full_cube_encode(
-                            data, self.symcode,
-                            self.triDimState)[self.writeSlice])
+            data_towrite = img_shapes.full_cube_encode(
+                    data, self.symcode, self.triDimState)[self.writeSlice]
         else:
-            self.IMAGE.write(data[self.writeSlice])
+            data_towrite = data[self.writeSlice]
 
-    def save_as_fits(self, fitsname: str) -> int:
+        if not data_towrite.flags['F_CONTIGUOUS']:
+            data_towrite = data_towrite.copy('F')
+        self.IMAGE.write(data_towrite)
+
+    def repost(self, atime: datetime.datetime | None = None) -> None:
+        """
+            Repost semaphore and writetimes
+            But does not handle data.
+        """
+        if atime is None:
+            self.IMAGE.update()
+        else:
+            self.IMAGE.update_atime(atime)
+
+    def save_as_fits(self, fitsname: str, **kwargs) -> int:
         """
         Convenient sometimes, to be able to export the data as a fits file.
 
@@ -568,8 +658,8 @@ class SHM_single:
         - fitsname: a filename (overwrite=True)
         """
         from pyMilk.interfacing import fits_lib
-        fits_lib.multi_write(fitsname, self.get_data(), symcode=self.symcode,
-                             tri_dim=self.triDimState)
+        fits_lib.multi_write(fitsname, self.get_data(**kwargs),
+                             symcode=self.symcode, tri_dim=self.triDimState)
         return 0
 
     #############################################################
@@ -580,51 +670,74 @@ class SHM_single:
         """
         Returns exposure time (sec)
         """
-        try:
-            return self.get_keywords()["tint"]
-        except:
-            return self.get_keywords()["EXPTIME"]
+        kws = self.get_keywords()
+        if "EXPTIME" in kws:
+            retval = kws["EXPTIME"]
+        else:
+            retval = kws.get("tint", 0.1234)
+
+        assert isinstance(retval, float)
+        return retval
 
     def get_fps(self) -> float:
         """
         Returns framerate (Hz)
         """
-        try:
-            return self.get_keywords()["fps"]
-        except:
-            return self.get_keywords()["FRATE"]
+        kws = self.get_keywords()
+        if "FRATE" in kws:
+            retval = kws["FRATE"]
+        else:
+            retval = kws.get("fps", 0.0)
+
+        assert isinstance(retval, float)
+        return retval
 
     def get_ndr(self) -> int:
         """
         Returns NDR status
         """
-        try:
-            return self.get_keywords()["NDR"]
-        except:
-            return self.get_keywords()["DET-NSMP"]
+        kws = self.get_keywords()
+        if "DET-NSMP" in kws:
+            retval = kws["DET-NSMP"]
+        else:
+            retval = kws.get("NDR", 1)
 
-    def get_crop(self) -> Tuple[int, int, int, int]:
+        assert isinstance(retval, int)
+        return retval
+
+    def get_crop(self) -> tuple[int, int, int, int]:
         """
         Return image crop boundaries
         """
-        x0x1y0y1 = [None, None, None, None]
+
         kws = self.get_keywords()
-        try:
-            new_new_key = ['PRD-MIN1', 'PRD-RNG1', 'PRD-MIN2', 'PRD-RNG2']
-            x0x1y0y1 = [kws[key] for key in new_new_key]
+        new_new_key = ['PRD-MIN1', 'PRD-RNG1', 'PRD-MIN2', 'PRD-RNG2']
+        if new_new_key[0] in kws:
+            x0x1y0y1 = [int(kws[key]) for key in new_new_key]
             # We switched from (start, end) to (start, range)
             # Also it's gonna be very broken in case we're binning
             x0x1y0y1[1] = x0x1y0y1[0] + x0x1y0y1[1] - 1
             x0x1y0y1[3] = x0x1y0y1[2] + x0x1y0y1[3] - 1
-        except:
-            try:
-                new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
-                x0x1y0y1 = [kws[key] for key in new_key]
-            except:
-                old_key = ['x0', 'x1', 'y0', 'y1']
-                x0x1y0y1 = [kws[key] for key in old_key]
+            tup = tuple(x0x1y0y1)
+            assert len(tup) == 4
+            return tup
 
-        return np.asarray(x0x1y0y1)
+        new_key = ['CROP_OR1', 'CROP_EN1', 'CROP_OR2', 'CROP_EN2']
+        if new_key[0] in kws:
+            tup = tuple([int(kws[key]) for key in new_key])
+            assert len(tup) == 4
+            return tup
+
+        old_key = ['x0', 'x1', 'y0', 'y1']
+        if old_key[0] in kws:
+            x0x1y0y1 = [int(kws[key]) for key in old_key]
+            x0x1y0y1[1] = x0x1y0y1[0] + x0x1y0y1[1] - 1
+            x0x1y0y1[3] = x0x1y0y1[2] + x0x1y0y1[3] - 1
+            tup = tuple(x0x1y0y1)
+            assert len(tup) == 4
+            return tup
+
+        return (0, 0, self.shape[0], self.shape[1])
 
     #############################################################
     # ADDITIONAL FEATURES - NOT SUPPORTED BY xaosim shm STRUCTURE
@@ -653,9 +766,22 @@ class SHM_single:
         if self.semID is None:
             self.semID = self.IMAGE.getsemwaitindex(0)
 
-    def multi_recv_data(self, n: int, outputFormat: int = 0,
-                        monitorCount: bool = False
-                        ) -> Union[List[np.ndarray], np.ndarray]:
+    @typ.overload
+    def multi_recv_data(self, n: int,
+                        output_as_cube: typ.Literal[False] = False,
+                        monitorCount: bool = False,
+                        timeout: float = 5.0) -> list[np.ndarray]:
+        ...
+
+    @typ.overload
+    def multi_recv_data(self, n: int, output_as_cube: typ.Literal[True],
+                        monitorCount: bool = False,
+                        timeout: float = 5.0) -> np.ndarray:
+        ...
+
+    def multi_recv_data(self, n: int, output_as_cube: bool = False,
+                        monitorCount: bool = False,
+                        timeout: float = 5.0) -> list[np.ndarray] | np.ndarray:
         """
         Synchronous read of n successive images in a stream.
 
@@ -668,31 +794,37 @@ class SHM_single:
         - monitorSem: Monitor and report the counter states when ready to receive - WIP
         """
         # Prep output
-        if outputFormat == 0:
-            OUT = []  # type: Union[np.ndarray, List[np.ndarray]]
+
+        output: list[np.ndarray] | np.ndarray
+        if output_as_cube is False:
+            output = [None for _ in range(n)]  # type: ignore
         else:
-            OUT = np.zeros((n, *self.shape), dtype=self.nptype)
+            output = np.zeros((n, *self.shape), dtype=self.nptype)
 
         if monitorCount:
             countValues = np.zeros((2, n), dtype=np.uint64)
+        else:
+            countValues = None
 
         # Check and flush the semaphore
         self._checkGrabSemaphore()
         self.IMAGE.semflush(self.semID)
 
         for k in range(n):
-            if monitorCount:
+            if countValues is not None:
                 countValues[0, k] = self.IMAGE.md.cnt0
 
-            if outputFormat == 0:
-                OUT.append(self.get_data(check=True, checkSemAndFlush=False))
-            else:
-                OUT[k] = self.get_data(check=True, copy=self.location >= 0,
-                                       checkSemAndFlush=False)
-            if monitorCount:
+            # if output[k] is a list slot, we must copy or we're gonna get a pointer
+            # if output[k] is a ndarray slice, we avoid a doublecopy with copy=False
+            output[k] = self.get_data(
+                    check=True, copy=(self.location >= 0) or
+                    (not output_as_cube), checkSemAndFlush=False,
+                    timeout=timeout)
+            if countValues is not None:
                 countValues[1, k] = self.IMAGE.md.cnt0
 
-        if monitorCount:
+        if countValues is not None:
+
             x = countValues[:, 1:] - countValues[:, :-1]
             p1, p2 = np.sum(x < 1, axis=1), np.sum(x > 1, axis=1)
             y = countValues[1] - countValues[0]
@@ -702,10 +834,10 @@ class SHM_single:
             print(f"{p2[0]} < 1, {p2[1]} > 1 deltas in post.")
             print(f"{p3} < 1, {p4} > 1 pre/post diff.")
 
-        return OUT
+        return output
 
 
-def _checkSHMName(fname):
+def check_SHM_name(fname: str) -> str:
     """
     Check if the name provided in the constructor is
     - a string in ISIO style
@@ -730,18 +862,17 @@ def _checkSHMName(fname):
 
     # It has slashes
     pre, end = os.path.split(fname)
-    milk_shm_dir = os.environ["MILK_SHM_DIR"]
 
     # Third condition is for future use if we allow subdirs
-    if not pre.startswith(milk_shm_dir) or (len(pre) > len(milk_shm_dir) and
-                                            pre[len(milk_shm_dir)] != "/"):
+    if not pre.startswith(MILK_SHM_DIR) or (len(pre) > len(MILK_SHM_DIR) and
+                                            pre[len(MILK_SHM_DIR)] != "/"):
         raise ValueError(
-                f"Only files in MILK_SHR_DIR ({milk_shm_dir}) are supported")
+                f"Only files in MILK_SHR_DIR ({MILK_SHM_DIR}) are supported")
 
     # Do we need to make folders ? We can't... maybe some day
-    if "/" in pre[len(milk_shm_dir):]:
+    if "/" in pre[len(MILK_SHM_DIR):]:
         raise ValueError(
-                f"Only files at the root of MILK_SHR_DIR ({milk_shm_dir}) are supported"
+                f"Only files at the root of MILK_SHR_DIR ({MILK_SHM_DIR}) are supported"
         )
 
     # OK we're good, just filter the extension

@@ -9,12 +9,7 @@ Options:
     <shm_name>    SHM to listen for - carried over from source server
     -s=<name_OR>  name override - reassign the SHM with a different name
 '''
-'''bash
-IP=""
-for CH in 00 01 02 03 04 05 06 07 08 09 10 11; do
-    zmq_recv.py ${IP}:321${CH} dm00disp${CH}
-done
-'''
+from __future__ import annotations
 
 import zmq
 import pickle
@@ -37,7 +32,7 @@ def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
 
     # We will get the pyMilk side ready in the loop upon the first reception
     pymilk_ready = False
-    out_shm = None
+    out_shm: SHM | None = None
 
     while True:
         message = socket.recv()
@@ -46,12 +41,22 @@ def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
         keywords, data = pickle.loads(message[sp_idx + 1:])
 
         if pymilk_ready:
+            assert out_shm is not None
             out_shm.set_data(data)
         else:
             # Needs a little kick on dtype parsing o_O
-            out_shm = SHM(out_name,
-                          data=data.astype(np.dtype(data.dtype.name)),
-                          nbkw=len(keywords) * 2)
+            try:  # Try reuse
+                out_shm = SHM(out_name, nbkw=0)
+                out_shm.set_data(
+                        data.astype(np.dtype(data.dtype.name))
+                )  # Make it crash here if dtype/dshape noncompliant
+                out_shm.set_keywords(
+                        keywords
+                )  # Make it crash here if we need keyword space
+            except:
+                out_shm = SHM(out_name,
+                              data=data.astype(np.dtype(data.dtype.name)),
+                              nbkw=len(keywords) * 2)
             pymilk_ready = True
 
         out_shm.set_keywords(keywords)
