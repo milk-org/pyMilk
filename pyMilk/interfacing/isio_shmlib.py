@@ -58,18 +58,6 @@ Credit for ImageStreamIOWrap pybind interface: A. Sevin
 """
 from __future__ import annotations
 
-try:
-    try:  # First shot
-        from ImageStreamIOWrap import Image, Image_kw
-    except:  # Second shot - maybe you forgot the default path ?
-        import sys
-        sys.path.append("/usr/local/python")
-        from ImageStreamIOWrap import Image, Image_kw
-except Exception as exc:
-    print("pyMilk.interfacing.isio_shmlib:")
-    print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
-    raise exc
-
 import typing as typ
 if typ.TYPE_CHECKING:
     KWType = str | int | float
@@ -201,7 +189,7 @@ class SHM_single:
             Image_kw_class = MILK_ENVIRONMENTS[0]['Image_kw']
         self.Image_kw_class = Image_kw_class
 
-        self.IMAGE = Image()
+        self.IMAGE = Image_class()
         self.FNAME = check_SHM_name(fname)
         self.FILEPATH = MILK_SHM_DIR + '/' + self.FNAME + '.im.shm'
 
