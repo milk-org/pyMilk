@@ -180,21 +180,13 @@ class ShmImshowClass:
         self.data = self.shm.get_data()
 
     def grabDark(self) -> None:
+        assert self.shmDark is not None
         self.dark = self.shmDark.get_data()
 
     def _toggle_hist_autoscale(self):
         self.hist_autoscale = not self.hist_autoscale
-        if self.hist_autoscale:
-            self.hist.autoHistogramRange()
-        else:
+        if not self.hist_autoscale:
             self.hist.setHistogramRange(*self.hist.getLevels())
-        '''
-        if self._doDarkSub:
-            self.hist.setLevels(self.data.min() - self.dark.min(),
-                                self.data.max() - self.dark.max())
-        else:
-            self.hist.setLevels(self.data.min(), self.data.max())
-        '''
 
     def update(self) -> None:
         self.grabData()
@@ -203,13 +195,14 @@ class ShmImshowClass:
             image = self.data - self.dark  # Wait this is super wrong in log scale !
         else:
             image = self.data
-        image[0, :] = np.median(image[1:,0])
+        # image[0, :] = np.median(image[1:,0])
 
         if hasattr(self, '_logZ') and self._logZ:
             image = np.log10(np.clip(image, 1.0, None))
 
         if self.hist_autoscale:
             self.imgItem.setImage(image)
+            self.hist.setLevels(image[1:].min(), image[1:].max())
         else:
             self.imgItem.setImage(image, levels=self.hist.getLevels())
 
