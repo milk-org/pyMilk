@@ -475,11 +475,14 @@ class SHM:
         return self.IMAGE.md.cnt0
 
     def non_block_wait_semaphore(self, sleeptime=0.1) -> int:
+        self._attempt_autorelink_if_needed()
         self._checkGrabSemaphore()
         self.IMAGE.semflush(self.semID)
         ret = -1
         while ret < 0:
             time.sleep(sleeptime)
+            self._attempt_autorelink_if_needed()
+            self._checkGrabSemaphore()
             # ret is -1 is semaphore is alive and not posted
             ret = self.IMAGE.semtrywait(self.semID)
 
