@@ -58,6 +58,18 @@ Credit for ImageStreamIOWrap pybind interface: A. Sevin
 """
 from __future__ import annotations
 
+# This essentially forces the resolution of libstdc++ from
+# $CONDA_PREFIX/lib instead of the system one IF IT EXIST
+# by the time we get to the ImageStreamIOWrap import
+# This matters because the conda one will be the more recent GLIBC
+# and linking an old one will cause ruckus.
+from ctypes import CDLL
+try:
+    lib = CDLL('libstdc++.so')
+except:
+    #print('No libstdc++ in $CONDA_PREFIX/lib. Proceeding.')
+    pass
+
 try:
     try:  # First shot
         from ImageStreamIOWrap import Image, Image_kw
