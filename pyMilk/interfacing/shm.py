@@ -486,20 +486,39 @@ class SHM:
     def get_counter(self) -> int:
         return self.IMAGE.md.cnt0
 
-    def non_block_wait_semaphore(self, sleeptime=0.1) -> int:
-        self._attempt_autorelink_if_needed()
-        self._checkGrabSemaphore()
+    def non_block_wait_semaphore(self, sleep_time=0.1) -> int:
+        '''
+        This will spin on SHM semaphore even in case of re-creation to a new inode
+        It will raise AutorelinkErrors if the size or dtype has changed.
+
+        To wait without erroring until a SHM is re-alive or recreated for sure,
+        see non_block_wait_until_recreation
+        '''
+        self._attempt_autorelink_if_needed()  # can raise!
         self.IMAGE.semflush(self.semID)
         ret = -1
         while ret < 0:
-            time.sleep(sleeptime)
-            self._attempt_autorelink_if_needed()
-            self._checkGrabSemaphore()
+            time.sleep(sleep_time)
+            self._attempt_autorelink_if_needed()  # can raise!
             # ret is -1 is semaphore is alive and not posted
             ret = self.IMAGE.semtrywait(self.semID)
 
         # ret will be 1 (sem destroyed) or 0 (sem posted)
         return ret
+
+    def non_block_wait_until_recreation(self, sleep_time=0.1) -> SHM:
+        '''
+        Except the shared memory to come back to life at about any cost:
+        - Semaphore becomes posted again
+        - New shared memory with the same name appears and posts semaphore
+
+        Returns a pointer to whatever shared memory is alive under self.FNAME.
+        '''
+        try:
+            self.non_block_wait_semaphore(sleep_time=sleep_time)
+            return self
+        except errors.AutoRelinkError:
+            return SHM(self.FNAME)
 
     def check_sem_trywait(self) -> bool:
         '''
