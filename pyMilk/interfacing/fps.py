@@ -230,7 +230,11 @@ class SmartAttributesFPS(FPS):
 
     _DICT_METADATA: dict[str, tuple[str, FPS_type, FPS_flags]]
 
-    def __new__(cls, name: str) -> cls:
+    TSubclass = typ.TypeVar(
+            'TSubclass',
+            bound='SmartAttributesFPS')  # Any subclass of this class
+
+    def __new__(cls: type[TSubclass], name: str) -> TSubclass:
         '''
         We're doing all this work in __new__ so that subclasses can inherit the behavior of
         create once the runtime checks are a go.
@@ -239,6 +243,16 @@ class SmartAttributesFPS(FPS):
         but we'd have to delete the FPS created by __new__ in case of non-compliance and aborting
         the __init__... so better in __new__
         '''
+        cls._cls_metadata_checks()
+        return super(SmartAttributesFPS, cls).__new__(cls)
+
+    @classmethod
+    def smartfps_downcast(cls: type[TSubclass], fps: FPS) -> TSubclass:
+        cls._cls_metadata_checks()
+        return typ.cast(cls, fps)
+
+    @classmethod
+    def _cls_metadata_checks(cls) -> None:
         if not hasattr(cls, '_DICT_METADATA'):
             raise SmartFPSInitError(
                     f'Missing _DICT_METADATA to instantiate SmartAttributesFPS subclass {cls.__name__}'
@@ -260,7 +274,6 @@ class SmartAttributesFPS(FPS):
                         f'_DICT_METADATA tuple type not OK for {param} -'
                         f'- {value_tuple} to instantiate SmartAttributesFPS subclass {cls.__name__}'
                 )
-        return super(SmartAttributesFPS, cls).__new__(cls)
 
     def __init__(self, name: str) -> None:
         super().__init__(name)
