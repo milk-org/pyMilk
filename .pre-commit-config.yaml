@@ -14,7 +14,7 @@ repos:
         - '80'
         - -a
 -   repo: https://github.com/pre-commit/pre-commit-hooks.git
-    rev: v4.1.0
+    rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
         exclude: \.fits
@@ -23,6 +23,7 @@ repos:
     -   id: check-yaml
     -   id: debug-statements
     -   id: name-tests-test
+        args: [--pytest-test-first]
     -   id: requirements-txt-fixer
 -   repo: local
     hooks:
