@@ -26,7 +26,8 @@ from docopt import docopt
 from pyMilk.interfacing.shm import SHM
 
 
-def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float, skip:int = 1, throttle_sec:float=0.):
+def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float,
+                  skip: int = 1, throttle_sec: float = 0.):
 
     # Open shared memories
     shm_obj = SHM(shm_name)
@@ -47,7 +48,8 @@ def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float, ski
             time.sleep(throttle_sec - t2 + t1)
         t1 = time.time()
 
-        data = shm_obj.get_data(check=True, checkSemAndFlush=init, timeout=timeout)
+        data = shm_obj.get_data(check=True, checkSemAndFlush=init,
+                                timeout=timeout)
         init = False
 
         if (counter % skip == 0):
@@ -73,8 +75,9 @@ if __name__ == "__main__":
     if doc['-f'] is None:
         throttle_sec = 0.0
     else:
-        throttle_sec = 1/float(doc['-f'])
+        throttle_sec = 1 / float(doc['-f'])
 
     skip = int(doc['-s'])
 
-    zmq_send_loop((host, port), shm_name, timeout, skip=skip, throttle_sec=throttle_sec)
+    zmq_send_loop((host, port), shm_name, timeout, skip=skip,
+                  throttle_sec=throttle_sec)
