@@ -27,28 +27,72 @@ import os
 import glob
 
 _CORES = os.sched_getaffinity(0)
-from CacaoProcessTools import fps as CPTFPS
+from CacaoProcessTools import fps as CPTFPS, FPS_type, FPS_flags
 
 os.sched_setaffinity(0, _CORES)
 
-FPVal: typ.TypeAlias = typ.Union[str, bool, int, float]
+if typ.TYPE_CHECKING:
+    FPVal: typ.TypeAlias = str | bool | int | float
+
+
+class FPSErrnoError(Exception):
+    pass
+
+
+class FPSDoesntExistError(Exception):
+    pass
+
+
+class SmartFPSInitError(Exception):
+    pass
 
 
 class FPS:
 
+    @classmethod
+    def create(cls, name: str, force_recreate: bool = False) -> cls:
+        fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{name}.fps.shm'
+        if force_recreate and os.path.exists(fps_filepath):
+            os.remove(fps_filepath)
+
+        # FIXME we need an API bind. OR AT LEAST USE THE milk-session wrapper
+        SHM_DIR = os.environ["MILK_SHM_DIR"]
+        os.system(
+                f'MILK_SHM_DIR={SHM_DIR} milk-exec "fpscreate 1000 {name} Comment"'
+        )
+        fps = cls(name)
+        fps.add_param('Name', 'Name', FPS_type.STRING,
+                      FPS_flags.DEFAULT_STATUS)  # 0x5 = VISIBLE | ACTIVE
+        fps['Name'] = name
+
+        return fps
+
     def __init__(self, name: str) -> None:
         self.name = name
-        self.fps = CPTFPS(name)
+        try:
+            self.fps = CPTFPS(name)
+        except RuntimeError as exc:
+            raise FPSDoesntExistError from exc
         self.key_types: typ.Dict[str, int] = self.fps.keys
 
     def __str__(self) -> str:
+        # FIXME append tmux status
         return f'{self.name} | CONF: {("N", "Y")[self.conf_isrunning()]} | RUN: {("N", "Y")[self.run_isrunning()]}'
 
     def _errno_raiser(self, retcode: int, info: str) -> None:
         if retcode != 0:
-            raise RuntimeError(
+            raise FPSErrnoError(
                     f'FPS {self.name}: errno raise code {retcode} with info {info}.'
             )
+
+    def add_param(self, key: str, comment: str, datatype: int,
+                  flags: int = FPS_flags.DEFAULT_INPUT) -> None:
+        self.fps.add_entry(key, comment, datatype, flags)
+        self.key_types[key] = datatype
+
+    def _destroy(self) -> None:
+        # MAKING ME UNHAPPY
+        self.fps.un
 
     def set_param(self, key: str, value: FPVal) -> None:
         if key in self.key_types:
@@ -62,6 +106,8 @@ class FPS:
         else:
             raise ValueError(f'get_param: key {key} not in FPS {self.name}.')
 
+    __setitem__ = set_param
+    __getitem__ = get_param
     '''
     We don't have that in pyFPS!
     def tmux_isrunning(self) -> bool:
@@ -94,6 +140,10 @@ class FPS:
 
     def disconnect(self) -> None:
         self.fps.disconnect()
+
+    def destroy(self) -> None:
+        fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{self.name}.fps.shm'
+        os.remove(fps_filepath)
 
 
 class FPSManager:
