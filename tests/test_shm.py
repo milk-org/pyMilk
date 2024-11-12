@@ -1,11 +1,13 @@
+import pytest
+
 import os
 
 import numpy as np
 
-from .isio_shmlib import SHM
+from pyMilk.interfacing.shm import SHM
 
 
-def test_data_conservation():
+def test_data_conservation(fixture_change_MILK_SHM_DIR):
 
     all_shapes: list[tuple[int] | tuple[int, int] | tuple[int, int, int]] = [
             (3, ), (2, 3), (2, 3, 4), (3, 4, 5), (5, 6, 7)
@@ -38,10 +40,10 @@ def test_data_conservation():
                 shm_write.IMAGE.destroy()
 
 
-def test_keyword():
+def test_keyword(fixture_change_MILK_SHM_DIR):
 
     data = np.random.randn(50, 20)
-    shm_write = SHM("pyMilk_autotest", data, nbkw=3)
+    shm_write = SHM("pyMilk_autotest", data, nbkw=4)
     kww = {'yo': ('lo', 'un commentaire'), 'toto': 17, 'arthur': 3.1415}
     shm_write.set_keywords(kww)
 
@@ -50,9 +52,12 @@ def test_keyword():
     assert kwr == {'yo': 'lo', 'toto': 17, 'arthur': 3.1415}
 
     kww = {'yo': 2.718, 'roger': 'trois'}
-    shm_read.set_keywords(kww)  # Should erase the comments
-    kwr = shm_write.get_keywords()
-    assert kwr == kww
+    shm_read.set_keywords(
+            kww
+    )  # Should erase all? the comments but not overwrite the entire keyword dict.
+    assert shm_read.get_keywords() == shm_write.get_keywords()
+    assert all(comm == ''
+               for (val, comm) in shm_write.get_keywords(True).values())
 
     shm_write.update_keyword('roger', '12')
     shm_write.update_keyword('yo', 13, 'comment')
@@ -62,7 +67,7 @@ def test_keyword():
     shm_write.IMAGE.destroy()
 
 
-def test_fits():
+def test_fits(fixture_change_MILK_SHM_DIR):
     for data in [
             np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),
             np.random.randn(30, 30),
