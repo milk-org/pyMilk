@@ -17,7 +17,6 @@
 
     First version:
         Requires milk more recent than Sep 27, 2023.
-        Does not allow creation, only linking.
 '''
 from __future__ import annotations
 
@@ -198,3 +197,86 @@ class FPSManager:
 
     def tmux_stop(self, fps: str) -> None:
         self.find_fps(fps).tmux_stop()
+
+
+class SmartAttributesFPS(FPS):
+    '''
+    This is meant for FPS that get reused a lot, so that we get static typing
+
+    E.g. define
+
+    class SFPS(SmartAttributesFPS):
+        gain: float
+
+    in the class preamble
+
+    and now you may do:
+
+    f = SPFS()
+
+    f.gain # return f['gain'] but correctly hinted to float
+    f.gain = 1.0 # pyright no screaming
+    f.gain = 'yolo' # pyright screaming,
+    although this would completely work at runtime since 'yolo' is a valid FPVal
+
+
+    Remains the question of the initializer...
+
+    e.g. we would love to pass something like:
+    gain: ('Averaging gain', FPS_type.FLOAT64, FPS_flags.DEFAULT_INPUT)
+
+    Am I reinventing named tuples / named dicts?
+    '''
+
+    _DICT_METADATA: dict[str, tuple[str, FPS_type, FPS_flags]]
+
+    def __new__(cls, name: str) -> cls:
+        '''
+        We're doing all this work in __new__ so that subclasses can inherit the behavior of
+        create once the runtime checks are a go.
+        Hol' up.
+        Probs we could just work it out in the init...
+        but we'd have to delete the FPS created by __new__ in case of non-compliance and aborting
+        the __init__... so better in __new__
+        '''
+        if not hasattr(cls, '_DICT_METADATA'):
+            raise SmartFPSInitError(
+                    f'Missing _DICT_METADATA to instantiate SmartAttributesFPS subclass {cls.__name__}'
+            )
+        if not cls._DICT_METADATA.keys() == cls.__annotations__.keys():
+            raise SmartFPSInitError(
+                    f'__annotations__ and _DICT_METADATA differ to instantiate '
+                    f'SmartAttributesFPS subclass {cls.__name__}')
+        for param, value_tuple in cls._DICT_METADATA.items():
+            if not len(value_tuple) == 3:
+                raise SmartFPSInitError(
+                        f'_DICT_METADATA tuple not len 3 for {param} to '
+                        f'instantiate SmartAttributesFPS subclass {cls.__name__}'
+                )
+            comment, tipe, flag = value_tuple
+            if not (isinstance(comment, str) and isinstance(tipe, FPS_type) and
+                    isinstance(flag, FPS_flags)):
+                raise SmartFPSInitError(
+                        f'_DICT_METADATA tuple type not OK for {param} -'
+                        f'- {value_tuple} to instantiate SmartAttributesFPS subclass {cls.__name__}'
+                )
+        return super(SmartAttributesFPS, cls).__new__(cls)
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+
+        for key, (comment, tipe, flags) in self._DICT_METADATA.items():
+            self.add_param(key, comment, tipe, flags)
+
+    def __getattribute__(self, _name: str):
+        # Avoid recursion error on self.__annotations__ --> self.__getattribute__('__annotations__') etc...
+        if _name != '__annotations__' and _name in self.__annotations__.keys():
+            return FPS.__getitem__(self, _name)
+
+        return super().__getattribute__(_name)
+
+    def __setattr__(self, _name, value):
+
+        if _name != '__annotations__' and _name in self.__annotations__.keys():
+            return FPS.__setitem__(self, _name, value)
+        return super().__setattr__(_name, value)
