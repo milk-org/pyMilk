@@ -103,7 +103,13 @@ from .. import errors
 
 import os
 
-MILK_SHM_DIR = os.environ["MILK_SHM_DIR"]
+
+def MILK_SHM_DIR() -> str:
+    '''
+    When testing, we may have to spoof the environment AFTER importing this module.
+    It's important to regenerate MILK_SHM_DIR dynamically for this reason.
+    '''
+    return os.environ["MILK_SHM_DIR"]
 
 
 class SHM:
@@ -177,7 +183,7 @@ class SHM:
 
         self.IMAGE = Image()
         self.FNAME = check_SHM_name(fname)
-        self.FILEPATH = MILK_SHM_DIR + '/' + self.FNAME + '.im.shm'
+        self.FILEPATH = MILK_SHM_DIR() + '/' + self.FNAME + '.im.shm'
 
         self.semID: int | None = None
         self.location = location
@@ -335,7 +341,7 @@ class SHM:
             Deprecated.
         '''
         raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
         )
 
     def read_keywords(self) -> None:
@@ -343,7 +349,7 @@ class SHM:
             Deprecated.
         '''
         raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
         )
 
     def write_keywords(self) -> None:
@@ -351,7 +357,7 @@ class SHM:
             Deprecated.
         '''
         raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
         )
 
     def read_keyword(self, ii: int) -> None:
@@ -359,7 +365,7 @@ class SHM:
             Deprecated.
         '''
         raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
         )
 
     def write_keyword(self, ii: int) -> None:
@@ -367,7 +373,7 @@ class SHM:
             Deprecated.
         '''
         raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keyords/set_keywords.'
+                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
         )
 
     def update_keyword(self, name: str, value: KWType,
@@ -859,16 +865,19 @@ def check_SHM_name(fname: str) -> str:
     # It has slashes
     pre, end = os.path.split(fname)
 
+    # We use it a lot in here, no need to call the dynamic env func every time.
+    SHM_DIR = MILK_SHM_DIR()
+
     # Third condition is for future use if we allow subdirs
-    if not pre.startswith(MILK_SHM_DIR) or (len(pre) > len(MILK_SHM_DIR) and
-                                            pre[len(MILK_SHM_DIR)] != "/"):
+    if not pre.startswith(SHM_DIR) or (len(pre) > len(SHM_DIR) and
+                                       pre[len(SHM_DIR)] != "/"):
         raise ValueError(
-                f"Only files in MILK_SHR_DIR ({MILK_SHM_DIR}) are supported")
+                f"Only files in MILK_SHR_DIR ({SHM_DIR}) are supported")
 
     # Do we need to make folders ? We can't... maybe some day
-    if "/" in pre[len(MILK_SHM_DIR):]:
+    if "/" in pre[len(SHM_DIR):]:
         raise ValueError(
-                f"Only files at the root of MILK_SHR_DIR ({MILK_SHM_DIR}) are supported"
+                f"Only files at the root of MILK_SHR_DIR ({SHM_DIR}) are supported"
         )
 
     # OK we're good, just filter the extension
