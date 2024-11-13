@@ -7,7 +7,7 @@ import numpy as np
 from pyMilk.interfacing.shm import SHM
 
 
-def test_data_conservation(fixture_change_MILK_SHM_DIR):
+def test_data_conservation():
 
     all_shapes: list[tuple[int] | tuple[int, int] | tuple[int, int, int]] = [
             (3, ), (2, 3), (2, 3, 4), (3, 4, 5), (5, 6, 7)
@@ -40,7 +40,7 @@ def test_data_conservation(fixture_change_MILK_SHM_DIR):
                 shm_write.IMAGE.destroy()
 
 
-def test_keyword(fixture_change_MILK_SHM_DIR):
+def test_keyword():
 
     data = np.random.randn(50, 20)
     shm_write = SHM("pyMilk_autotest", data, nbkw=4)
@@ -67,7 +67,7 @@ def test_keyword(fixture_change_MILK_SHM_DIR):
     shm_write.IMAGE.destroy()
 
 
-def test_fits(fixture_change_MILK_SHM_DIR):
+def test_fits():
     for data in [
             np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),
             np.random.randn(30, 30),

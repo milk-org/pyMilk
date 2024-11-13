@@ -3,7 +3,7 @@ import pytest
 from pyMilk.interfacing import fps
 
 
-def test_smart_fps_instantiation(fixture_change_MILK_SHM_DIR):
+def test_smart_fps_instantiation():
 
     class A(fps.SmartAttributesFPS):
         pass
@@ -62,3 +62,45 @@ def test_smart_fps_instantiation(fixture_change_MILK_SHM_DIR):
 
     g.gain = 3.1415
     assert g.gain == pytest.approx(3.1415)
+
+
+@pytest.fixture
+def fixt_smart_fps_properties():
+
+    class A(fps.SmartAttributesFPS):
+        i4: int
+        i8: int
+        u4: int
+        u8: int
+        f4: float
+        f8: float
+        s: str
+
+        _DICT_METADATA = {
+                'i4': ('i4', fps.FPS_type.INT32, fps.FPS_flags.DEFAULT_INPUT),
+                'i8': ('i8', fps.FPS_type.INT64, fps.FPS_flags.DEFAULT_INPUT),
+                'u4': ('u4', fps.FPS_type.UINT32, fps.FPS_flags.DEFAULT_INPUT),
+                'u8': ('u8', fps.FPS_type.UINT64, fps.FPS_flags.DEFAULT_INPUT),
+                'f4': ('f4', fps.FPS_type.FLOAT32, fps.FPS_flags.DEFAULT_INPUT
+                       ),
+                'f8': ('f8', fps.FPS_type.FLOAT64, fps.FPS_flags.DEFAULT_INPUT
+                       ),
+                's': ('s', fps.FPS_type.STRING, fps.FPS_flags.DEFAULT_INPUT)
+        }
+
+    with pytest.raises(fps.FPSDoesntExistError):
+        a = A('uniq_a')
+
+    a = A.create('uniq_a')
+
+    yield A
+
+    a.destroy()
+
+
+def test_fixture_works(fixt_smart_fps_properties):
+    pass
+
+
+def test_fixture_works_twice(fixt_smart_fps_properties):
+    pass
