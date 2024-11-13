@@ -230,11 +230,11 @@ class SmartAttributesFPS(FPS):
 
     _DICT_METADATA: dict[str, tuple[str, FPS_type, FPS_flags]]
 
-    TSubclass = typ.TypeVar(
+    _T_Subclass = typ.TypeVar(
             'TSubclass',
             bound='SmartAttributesFPS')  # Any subclass of this class
 
-    def __new__(cls: type[TSubclass], name: str) -> TSubclass:
+    def __new__(cls: type[_T_Subclass], name: str) -> _T_Subclass:
         '''
         We're doing all this work in __new__ so that subclasses can inherit the behavior of
         create once the runtime checks are a go.
@@ -247,7 +247,7 @@ class SmartAttributesFPS(FPS):
         return super(SmartAttributesFPS, cls).__new__(cls)
 
     @classmethod
-    def smartfps_downcast(cls: type[TSubclass], fps: FPS) -> TSubclass:
+    def smartfps_downcast(cls: type[_T_Subclass], fps: FPS) -> _T_Subclass:
         cls._cls_metadata_checks()
         return typ.cast(cls, fps)
 
@@ -275,21 +275,37 @@ class SmartAttributesFPS(FPS):
                         f'- {value_tuple} to instantiate SmartAttributesFPS subclass {cls.__name__}'
                 )
 
+    def _prop_fget(self, prop_name: str):
+
+        def fget(self):
+            return FPS.__getitem__(self, prop_name)
+
+        return fget
+
+    def _prop_fset(self, prop_name: str):
+
+        def fset(self, value):
+            FPS.__setitem__(self, prop_name, value)
+
+        return fset
+
     def __init__(self, name: str) -> None:
         super().__init__(name)
 
         for key, (comment, tipe, flags) in self._DICT_METADATA.items():
             self.add_param(key, comment, tipe, flags)
+        '''
+        This is for Pyro4 exposes and preventing a __getattribute / __setattribute
+        metaprogramming pain
 
-    def __getattribute__(self, _name: str):
-        # Avoid recursion error on self.__annotations__ --> self.__getattribute__('__annotations__') etc...
-        if _name != '__annotations__' and _name in self.__annotations__.keys():
-            return FPS.__getitem__(self, _name)
+        We wrap DICT_METADATA in properties.
+        The underlying data storage is not in hidden attributes, but directly in the FPS
+        SHM tree.
 
-        return super().__getattribute__(_name)
-
-    def __setattr__(self, _name, value):
-
-        if _name != '__annotations__' and _name in self.__annotations__.keys():
-            return FPS.__setitem__(self, _name, value)
-        return super().__setattr__(_name, value)
+        There will come a problem with this whole thing for attributes with dots
+        in their names.
+        '''
+        for key in self._DICT_METADATA:
+            #setattr(self, '___' + key, getattr(self, key))
+            setattr(self.__class__, key,
+                    property(self._prop_fget(key), self._prop_fset(key)))
