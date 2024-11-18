@@ -104,24 +104,7 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 setup(
-        name='pyMilk',
-        version='1.01',
-        description='Python bindings and utilities to use with MILK and CACAO',
-        long_description=long_description,
-        author='Vincent Deo',
-        author_email='vdeo@naoj.org',
-        url="http://www.github.com/milk-org/pyMilk",
         packages=['pyMilk'],  # same as name
-        install_requires=['docopt', 'pyqtgraph', 'pybind11', 'numpy', 'pyzmq'],
-        setup_requires=['pybind11>=2.11'],
         ext_modules=[CMakeExtension('ImageStreamIO')],
         cmdclass=dict(build_ext=CMakeBuildExt),
-        scripts=[
-                'pyMilk/visual/shmPlot.py',
-                'pyMilk/visual/shmImshow.py',
-                'pyMilk/scripts/zmq_send.py',
-                'pyMilk/scripts/zmq_recv.py',
-                'pyMilk/scripts/updatekw',
-                'pyMilk/scripts/creashmim',
-                'pyMilk/visual/shmTermshow.py',
-        ])
+        long_description=long_description)
