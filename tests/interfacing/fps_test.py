@@ -1,4 +1,5 @@
 import pytest
+import os
 
 from pyMilk.interfacing import fps
 
@@ -127,3 +128,95 @@ def test_fixture_works(fixt_smart_fps_properties):
 
 def test_fixture_works_twice(fixt_smart_fps_properties):
     assert True
+
+
+def test_smart_fps_property_types(fixt_smart_fps_properties):
+    fps = fixt_smart_fps_properties
+
+    # Test integer properties
+    fps.i4 = 42
+    assert fps.i4 == 42
+    fps.i8 = -9223372036854775807  # Test large int64
+    assert fps.i8 == -9223372036854775807
+
+    # Test unsigned integers
+    fps.u4 = 4294967295  # Max uint32
+    assert fps.u4 == 4294967295
+    fps.u8 = 18446744073709551615  # Max uint64
+    assert fps.u8 == 18446744073709551615
+
+    # Test floats
+    fps.f4 = 3.14159
+    assert fps.f4 == pytest.approx(3.14159)
+    fps.f8 = 2.718281828459045
+    assert fps.f8 == pytest.approx(2.718281828459045)
+
+    # Test string
+    fps.s = "Hello FPS!"
+    assert fps.s == "Hello FPS!"
+
+
+def test_smart_fps_type_validation(fixt_smart_fps_properties):
+    fps = fixt_smart_fps_properties
+
+    # Test invalid type assignments
+    with pytest.raises(ValueError):
+        fps.i4 = "not integer-able"
+    with pytest.raises(ValueError):
+        fps.f4 = "not float-able"
+
+    fps.s = 42
+    assert fps.s == '42'  # 'Dis JS or what?
+
+
+def test_smart_fps_concurrent_access():
+    """Test that multiple SmartAttributesFPS instances can coexist"""
+
+    class TestFPS(fps.SmartAttributesFPS):
+        value: float
+        _DICT_METADATA = {
+                'value': ('val', fps.FPS_type.FLOAT32,
+                          fps.FPS_flags.DEFAULT_INPUT)
+        }
+
+    fps1 = TestFPS.create('fps_test_1')
+    fps2 = TestFPS.create('fps_test_2')
+
+    fps1.value = 1.0
+    fps2.value = 2.0
+
+    assert fps1.value == pytest.approx(1.0)
+    assert fps2.value == pytest.approx(2.0)
+
+    fps1.destroy()
+    fps2.destroy()
+
+    # Verify FPS was properly destroyed
+    with pytest.raises(fps.FPSDoesntExistError):
+        TestFPS('fps_test_1')
+    with pytest.raises(fps.FPSDoesntExistError):
+        TestFPS('fps_test_2')
+
+
+def test_fps_filesystem_operations():
+    """Test that FPS create/destroy operations are reflected in the filesystem"""
+
+    fps_name = 'test_fps_filesystem_ops'
+    fps_path = os.environ[
+            'MILK_SHM_DIR'] + f"/{fps_name}.fps.shm"  # Standard FPS file location
+
+    # Ensure FPS doesn't exist before test
+    if os.path.exists(fps_path):
+        raise RuntimeError(f"FPS file {fps_path} already exists")
+
+    # Test creation
+    test_fps = fps.FPS.create(fps_name)
+    assert os.path.exists(fps_path), "FPS file was not created"
+
+    # Test destruction
+    test_fps.destroy()
+    assert not os.path.exists(fps_path), "FPS file was not removed"
+
+    # Verify FPS was properly destroyed
+    with pytest.raises(fps.FPSDoesntExistError):
+        fps.FPS(fps_name)
