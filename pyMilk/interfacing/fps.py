@@ -23,6 +23,7 @@ from __future__ import annotations
 import typing as typ
 
 import os
+import time
 import glob
 
 _CORES = os.sched_getaffinity(0)
@@ -48,8 +49,12 @@ class SmartFPSInitError(Exception):
 
 class FPS:
 
+    _T_Subclass = typ.TypeVar('_T_Subclass',
+                              bound='FPS')  # Any subclass of this class
+
     @classmethod
-    def create(cls, name: str, force_recreate: bool = False) -> cls:
+    def create(cls: type[_T_Subclass], name: str,
+               force_recreate: bool = False) -> _T_Subclass:
         fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{name}.fps.shm'
         if force_recreate and os.path.exists(fps_filepath):
             os.remove(fps_filepath)
@@ -119,17 +124,39 @@ class FPS:
     def run_isrunning(self) -> bool:
         return self.fps.RUNrunning == 1
 
-    def conf_start(self) -> None:
+    def conf_start(self, timeoutsync: float | None = None) -> None:
         self._errno_raiser(self.fps.CONFstart(), 'conf_start')
+        if not timeoutsync:
+            return
+        start = time.time()
+        while (not self.conf_isrunning()) and (time.time() - start
+                                               < timeoutsync):
+            time.sleep(1e-4)
 
-    def conf_stop(self) -> None:
+    def conf_stop(self, timeoutsync: float | None = None) -> None:
         self._errno_raiser(self.fps.CONFstop(), 'conf_stop')
+        if not timeoutsync:
+            return
+        start = time.time()
+        while self.conf_isrunning() and (time.time() - start < timeoutsync):
+            time.sleep(1e-4)
 
-    def run_start(self) -> None:
+    def run_start(self, timeoutsync: float | None = None) -> None:
         self._errno_raiser(self.fps.RUNstart(), 'run_start')
+        if not timeoutsync:
+            return
+        start = time.time()
+        while (not self.run_isrunning()) and (time.time() - start
+                                              < timeoutsync):
+            time.sleep(1e-4)
 
-    def run_stop(self) -> None:
+    def run_stop(self, timeoutsync: float | None = None) -> None:
         self._errno_raiser(self.fps.RUNstop(), 'run_stop')
+        if not timeoutsync:
+            return
+        start = time.time()
+        while (self.run_isrunning()) and (time.time() - start < timeoutsync):
+            time.sleep(1e-4)
 
     def tmux_start(self) -> None:
         self._errno_raiser(self.fps.TMUXstart(), 'tmux_start')
@@ -147,9 +174,11 @@ class FPS:
 
 class FPSManager:
 
-    def __init__(self, fps_name_glob: str = '*') -> None:
+    def __init__(self, fps_name_glob: str = '*',
+                 fps_keyword_glob: str = '*') -> None:
         self.fps_cache: typ.Dict[str, FPS] = {}
         self.fps_name_glob = fps_name_glob
+        self.fps_keyword_glob = fps_keyword_glob
         self.rescan_all()
 
     def find_fps(self, name: str) -> FPS:
@@ -158,16 +187,33 @@ class FPSManager:
 
         return self.fps_cache[name]
 
-    def rescan_all(self, fps_name_glob: str | None = None):
+    def rescan_all(self, fps_name_glob: str | None = None,
+                   fps_keyword_glob: str | None = None):
 
         if fps_name_glob is None:
             fps_name_glob = self.fps_name_glob
+        if fps_keyword_glob is None:
+            fps_keyword_glob = self.fps_keyword_glob
+        import fnmatch
 
         self.purge_cache()
         system_fps_files = glob.glob(os.environ['MILK_SHM_DIR'] +
                                      f'/{fps_name_glob}.fps.shm')
         for fps_file in system_fps_files:
             self.find_fps(os.path.basename(fps_file).split('.')[0])
+
+        rm_keys = set()
+        for name, fpsobj in self.fps_cache.items():
+            md = fpsobj.fps.md()
+            kw_str = md.kwarray.strip(':')
+            if (len(kw_str) == 0 or not any(
+                    (fnmatch.fnmatch(kw, fps_keyword_glob)
+                     for kw in kw_str.split(':')))):
+                rm_keys.add(name)
+
+        for name in rm_keys:
+            fps = self.fps_cache.pop(name)
+            fps.disconnect()
 
     def purge_cache(self) -> None:
         for k, v in self.fps_cache.items():
@@ -180,17 +226,17 @@ class FPSManager:
     def get_param(self, fps: str, key: str) -> FPVal:
         return self.find_fps(fps).get_param(key)
 
-    def conf_start(self, fps: str) -> None:
-        self.find_fps(fps).conf_start()
+    def conf_start(self, fps: str, timeout: float | None = None) -> None:
+        self.find_fps(fps).conf_start(timeout)
 
-    def conf_stop(self, fps: str) -> None:
-        self.find_fps(fps).conf_stop()
+    def conf_stop(self, fps: str, timeout: float | None = None) -> None:
+        self.find_fps(fps).conf_stop(timeout)
 
-    def run_start(self, fps: str) -> None:
-        self.find_fps(fps).run_start()
+    def run_start(self, fps: str, timeout: float | None = None) -> None:
+        self.find_fps(fps).run_start(timeout)
 
-    def run_stop(self, fps: str) -> None:
-        self.find_fps(fps).run_stop()
+    def run_stop(self, fps: str, timeout: float | None = None) -> None:
+        self.find_fps(fps).run_stop(timeout)
 
     def tmux_start(self, fps: str) -> None:
         self.find_fps(fps).tmux_start()
@@ -231,7 +277,7 @@ class SmartAttributesFPS(FPS):
     _DICT_METADATA: dict[str, tuple[str, FPS_type, FPS_flags]]
 
     _T_Subclass = typ.TypeVar(
-            'TSubclass',
+            '_T_Subclass',
             bound='SmartAttributesFPS')  # Any subclass of this class
 
     def __new__(cls: type[_T_Subclass], name: str) -> _T_Subclass:

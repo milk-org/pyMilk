@@ -23,7 +23,7 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph import QtGui as QtG, QtCore as QtC, QtWidgets as QtW
 
-from pyMilk.interfacing.isio_shmlib import SHM
+from pyMilk.interfacing.shm import SHM
 
 SYMCODE_TRANS = [
         QtG.QTransform(0, 1, 1, 0, 0, 0),

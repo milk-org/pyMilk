@@ -65,6 +65,18 @@ def test_smart_fps_instantiation():
 
 
 @pytest.fixture
+def fixt_dumb_fps():
+    with pytest.raises(fps.FPSDoesntExistError):
+        a = fps.FPS('uniq_fps')
+
+    a = fps.FPS.create('uniq_fps')
+
+    yield a
+
+    a.destroy()
+
+
+@pytest.fixture
 def fixt_smart_fps_properties():
 
     class A(fps.SmartAttributesFPS):
@@ -93,14 +105,25 @@ def fixt_smart_fps_properties():
 
     a = A.create('uniq_a')
 
-    yield A
+    yield a
 
     a.destroy()
 
 
+def test_md(fixt_dumb_fps):
+    fps = fixt_dumb_fps
+    md = fps.fps.md()
+    for tag in md.__dir__():
+        if not tag.startswith('_'):
+            print(tag, getattr(md, tag))
+
+    assert True
+
+
 def test_fixture_works(fixt_smart_fps_properties):
-    pass
+    fps = fixt_smart_fps_properties
+    assert True
 
 
 def test_fixture_works_twice(fixt_smart_fps_properties):
-    pass
+    assert True
