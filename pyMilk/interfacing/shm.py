@@ -543,10 +543,29 @@ class SHM:
         self._checkGrabSemaphore()
         return self.IMAGE.semvalue(self.semID)
 
+    @typ.overload
     def get_data(self, check: bool = False, reform: bool = True,
                  sleepT: float = 0.001, timeout: float | None = 5.0,
                  copy: bool = True, checkSemAndFlush: bool = True,
-                 autorelink_if_need: bool = True) -> np.ndarray:
+                 autorelink_if_need: bool = True,
+                 return_none_on_timeout: typ.Literal[False] = False
+                 ) -> np.ndarray:
+        ...
+
+    @typ.overload
+    def get_data(self, check: bool = False, reform: bool = True,
+                 sleepT: float = 0.001, timeout: float | None = 5.0,
+                 copy: bool = True, checkSemAndFlush: bool = True,
+                 autorelink_if_need: bool = True,
+                 return_none_on_timeout: typ.Literal[True] = True
+                 ) -> np.ndarray | None:
+        ...
+
+    def get_data(self, check: bool = False, reform: bool = True,
+                 sleepT: float = 0.001, timeout: float | None = 5.0,
+                 copy: bool = True, checkSemAndFlush: bool = True,
+                 autorelink_if_need: bool = True,
+                 return_none_on_timeout: bool = False) -> np.ndarray | None:
         """
         Reads and returns the data part of the SHM file
         Parameters:
@@ -577,6 +596,8 @@ class SHM:
                 if err != 0:
                     print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
                           )
+                    if return_none_on_timeout:
+                        return None
 
         if self.location >= 0:
             if copy:
