@@ -544,8 +544,7 @@ class SHM:
         return self.IMAGE.semvalue(self.semID)
 
     @typ.overload
-    def get_data(self, check: bool = False, reform: bool = True,
-                 sleepT: float = 0.001, timeout: float | None = 5.0,
+    def get_data(self, check: bool = False, timeout: float | None = 5.0,
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: typ.Literal[False] = False
@@ -553,16 +552,14 @@ class SHM:
         ...
 
     @typ.overload
-    def get_data(self, check: bool = False, reform: bool = True,
-                 sleepT: float = 0.001, timeout: float | None = 5.0,
+    def get_data(self, check: bool = False, timeout: float | None = 5.0,
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: typ.Literal[True] = True
                  ) -> np.ndarray | None:
         ...
 
-    def get_data(self, check: bool = False, reform: bool = True,
-                 sleepT: float = 0.001, timeout: float | None = 5.0,
+    def get_data(self, check: bool = False, timeout: float | None = 5.0,
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: bool = False) -> np.ndarray | None:
