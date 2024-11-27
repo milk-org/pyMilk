@@ -295,7 +295,10 @@ class SmartAttributesFPS(FPS):
     @classmethod
     def smartfps_downcast(cls: type[_T_Subclass], fps: FPS) -> _T_Subclass:
         cls._cls_metadata_checks()
-        return typ.cast(cls, fps)
+        # This actually casts...
+        # fps.__class__ = cls
+        # Let's prefer making a copy.
+        return cls(fps.name)
 
     @classmethod
     def _cls_metadata_checks(cls) -> None:

@@ -111,6 +111,22 @@ def fixt_smart_fps_properties():
     a.destroy()
 
 
+def test_downcasting(fixt_smart_fps_properties):
+    a = fixt_smart_fps_properties
+    a.i4 = 12345
+
+    f = fps.FPS(a.name)
+    with pytest.raises(AttributeError):
+        _ = f.i4
+
+    assert f['i4'] == 12345
+
+    f_as_a = type(a).smartfps_downcast(f)
+    assert f_as_a.i4 == 12345
+    f_as_a.s = "yolo"
+    assert f['s'] == 'yolo'
+
+
 def test_md(fixt_dumb_fps):
     fps = fixt_dumb_fps
     md = fps.fps.md()
