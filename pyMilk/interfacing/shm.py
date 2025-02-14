@@ -323,7 +323,7 @@ class SHM:
         self.shape_c = data_c.shape
         return data_c
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> SHM:
         '''
         Use this class as a context manager.
         __enter__ does nothing
@@ -335,7 +335,7 @@ class SHM:
         with SHM('x') as _shm:
             data = _shm.get_data() # Good
         '''
-        pass
+        return self
 
     def __exit__(
             self,
