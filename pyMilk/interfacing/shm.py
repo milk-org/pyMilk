@@ -92,6 +92,9 @@ if typ.TYPE_CHECKING:
     KWOptCommentMapping = typ.Mapping[str, KWType | tuple[KWType] |
                                       tuple[KWType, str]]
 
+    from types import TracebackType
+    ExcTpl = typ.TypeVar('ExcTpl', bound=BaseException)
+
 import datetime
 import numpy as np
 import numpy.typing as npt
@@ -319,6 +322,28 @@ class SHM:
 
         self.shape_c = data_c.shape
         return data_c
+
+    def __enter__(self) -> None:
+        '''
+        Use this class as a context manager.
+        __enter__ does nothing
+        __exit__ calls close()
+
+        This allows a variation of the pattern of (repeatedly) calling:
+        data = SHM('x').get_data() # BAD
+        using
+        with SHM('x') as _shm:
+            data = _shm.get_data() # Good
+        '''
+        pass
+
+    def __exit__(
+            self,
+            type_: type[ExcTpl] | None,
+            value: ExcTpl | None,
+            traceback: TracebackType | None,
+    ) -> bool | None:
+        self.close()
 
     def rename_img(self, newname: str) -> None:
         raise NotImplementedError()
