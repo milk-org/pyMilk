@@ -69,7 +69,15 @@ class FPS:
                       FPS_flags.DEFAULT_STATUS)  # 0x5 = VISIBLE | ACTIVE
         fps['Name'] = name
 
+        fps.post_create_set_defaults()
+
         return fps
+
+    def post_create_set_defaults(self) -> None:
+        '''
+        Handle for subclassing
+        '''
+        return None
 
     def __init__(self, name: str) -> None:
         self.name = name
@@ -306,7 +314,7 @@ class SmartAttributesFPS(FPS):
             raise SmartFPSInitError(
                     f'Missing _DICT_METADATA to instantiate SmartAttributesFPS subclass {cls.__name__}'
             )
-        if not cls._DICT_METADATA.keys() == cls.__annotations__.keys():
+        if not cls._DICT_METADATA.keys() == cls._cls_find_annotations().keys():
             raise SmartFPSInitError(
                     f'__annotations__ and _DICT_METADATA differ to instantiate '
                     f'SmartAttributesFPS subclass {cls.__name__}')
@@ -323,6 +331,21 @@ class SmartAttributesFPS(FPS):
                         f'_DICT_METADATA tuple type not OK for {param} -'
                         f'- {value_tuple} to instantiate SmartAttributesFPS subclass {cls.__name__}'
                 )
+
+    @classmethod
+    def _cls_find_annotations(cls: type[_T_Subclass]
+                              ) -> typ.Iterable[str]:  # Really a dict_keys
+        annotations = cls.__annotations__.copy()
+        next_in_mro = cls.__mro__[
+                1]  # This will break multiple inheritance if any
+        if hasattr(next_in_mro, '_cls_find_annotations'):
+            annotations.update(
+                    next_in_mro._cls_find_annotations())  # type: ignore
+
+        if '_DICT_METADATA' in annotations:
+            del annotations['_DICT_METADATA']
+
+        return annotations
 
     def _prop_fget(self, prop_name: str):
 
