@@ -72,11 +72,11 @@ except:
 
 try:
     try:  # First shot
-        from ImageStreamIOWrap import Image, Image_kw
+        from pyMilk.ImageStreamIOWrap import Image, Image_kw
     except:  # Second shot - maybe you forgot the default path ?
         import sys
         sys.path.append("/usr/local/python")
-        from ImageStreamIOWrap import Image, Image_kw
+        from pyMilk.ImageStreamIOWrap import Image, Image_kw
 except Exception as exc:
     print("pyMilk.interfacing.isio_shmlib:")
     print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")

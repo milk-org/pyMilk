@@ -15,14 +15,16 @@ from setuptools.command.build_ext import build_ext
 
 class CMakeExtension(Extension):
 
-    def __init__(self, name, sourcedir=''):
+    def __init__(self, name, package, sourcedir=''):
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
+        self.package = package
 
 
 class CMakeBuildExt(build_ext):
 
     def run(self):
+        self.inplace = True
         try:
             import pybind11  # Will raise ModuleNotFoundError
             if pybind11.version_info < (2, 11):
@@ -55,7 +57,8 @@ class CMakeBuildExt(build_ext):
                 os.path.dirname(self.get_ext_fullpath(ext.name)))
 
         cmake_args = [
-                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
+                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir + '/' +
+                ext.package + '/',
                 '-DPYTHON_EXECUTABLE=' + sys.executable,
         ]
 
@@ -105,6 +108,6 @@ with open("README.md", 'r') as f:
 
 setup(
         packages=['pyMilk'],  # same as name
-        ext_modules=[CMakeExtension('ImageStreamIO')],
+        ext_modules=[CMakeExtension('ImageStreamIO', package='pyMilk')],
         cmdclass=dict(build_ext=CMakeBuildExt),
         long_description=long_description)
