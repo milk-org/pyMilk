@@ -15,11 +15,10 @@ Options:
 '''
 from __future__ import annotations
 
-import typing as typ
-
 import time
 import numpy as np
 
+from docopt import docopt
 import pyqtgraph as pg
 from pyqtgraph import QtGui as QtG, QtCore as QtC, QtWidgets as QtW
 
@@ -222,9 +221,8 @@ class ShmImshowClass:
         self.title.setText(self.titleStr + f' - {self.fps:.2f} FPS')
 
 
-if __name__ == "__main__":
+def main():
     # Parse
-    from docopt import docopt
     doc = docopt(__doc__)
     doc['-s'] = int(doc['-s'])
     doc['--fr'] = float(doc['--fr'])
@@ -236,3 +234,6 @@ if __name__ == "__main__":
     plotter = ShmImshowClass(doc['<name>'], symcode=doc['-s'],
                              targetFps=doc['--fr'])
     app.exec_()
+
+if __name__ == "__main__":
+    main()

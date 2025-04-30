@@ -102,12 +102,9 @@ class CMakeBuildExt(build_ext):
         subprocess.check_call(['cmake', '--build', '.'] + build_args,
                               cwd=self.build_temp)
 
-
-with open("README.md", 'r') as f:
-    long_description = f.read()
-
 setup(
-        packages=['pyMilk'],  # same as name
-        ext_modules=[CMakeExtension('ImageStreamIO', package='pyMilk')],
-        cmdclass=dict(build_ext=CMakeBuildExt),
-        long_description=long_description)
+    name="pyMilk",
+    ext_modules=[CMakeExtension("ImageStreamIO", package="pyMilk")],
+    cmdclass={"build_ext": CMakeBuildExt},
+    zip_safe=False,
+)

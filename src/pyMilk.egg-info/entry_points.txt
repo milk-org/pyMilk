@@ -1,0 +1,8 @@
+[console_scripts]
+creashmim = pyMilk.scripts.creashmim:main
+shmImshow.py = pyMilk.visual.shmImshow:main
+shmPlot.py = pyMilk.visual.shmPlot:main
+shmTermshow.py = pyMilk.visual.shmTermshow:main
+updatekw = pyMilk.scripts.updatekw:main
+zmq_recv.py = pyMilk.scripts.zmq_recv:main
+zmq_send.py = pyMilk.scripts.zmq_send:main

@@ -16,6 +16,7 @@ Options:
 import time
 import numpy as np
 
+from docopt import docopt
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 
@@ -216,9 +217,8 @@ class ShmPlotClass:
         self.plot.setTitle(self.title + f' - {self.fps:.2f} FPS')
 
 
-if __name__ == "__main__":
+def main():
     # Parse
-    from docopt import docopt
     doc = docopt(__doc__)
     doc['--fr'] = float(doc['--fr'])
 
@@ -229,3 +229,6 @@ if __name__ == "__main__":
     plotter = ShmPlotClass(doc['<name>'], transpose=doc['-t'],
                            targetFps=doc['--fr'])
     app.exec_()
+
+if __name__ == "__main__":
+    main()

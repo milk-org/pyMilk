@@ -1,0 +1,5 @@
+astropy
+docopt
+libtmux
+numpy
+tqdm

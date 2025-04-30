@@ -1,17 +1,17 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=58", "wheel", 'pybind11>=2.11', 'cmake']
+requires = ["setuptools>=77", 'pybind11>=2.11', 'cmake']
 
 [project]
 authors = [
   {name = "Vincent Deo", email = "vdeo@naoj.org"},
 ]
 dependencies = [
+  "astropy",
   "docopt",
   "libtmux",
   "numpy",
   "tqdm",
-  "astropy",
 ]
 
 description = "Python bindings and utilities to use with MILK and CACAO"
@@ -22,20 +22,14 @@ version = "1.2"
 [project.urls]
 "Homepage" = "http://www.github.com/milk-org/pyMilk"
 
-
-[tool.setuptools]
-packages = ["pyMilk"]
-script-files = [
-                "pyMilk/visual/shmPlot.py",
-                "pyMilk/visual/shmImshow.py",
-                "pyMilk/scripts/zmq_send.py",
-                "pyMilk/scripts/zmq_recv.py",
-                "pyMilk/scripts/updatekw",
-                "pyMilk/scripts/creashmim",
-                "pyMilk/visual/shmTermshow.py"
-]
-
-
+[project.scripts]
+"shmPlot.py"="pyMilk.visual.shmPlot:main"
+"shmImshow.py"="pyMilk.visual.shmImshow:main"
+"zmq_send.py"="pyMilk.scripts.zmq_send:main"
+"zmq_recv.py"="pyMilk.scripts.zmq_recv:main"
+updatekw="pyMilk.scripts.updatekw:main"
+creashmim="pyMilk.scripts.creashmim:main"
+"shmTermshow.py"="pyMilk.visual.shmTermshow:main"
 
 
 [tool.pytest.ini_options]
@@ -44,7 +38,7 @@ addopts = [
 ]
 
 [tool.pyright]
-extraPaths = ["/home/vdeo/src/swmain",] # Need to list scexao's pip install -e packages...
+extraPaths = ["/home/scexao/src/swmain",] # Need to list scexao's pip install -e packages...
 typeCheckingMode = "basic" # off | basic | standard | strict # Look there https://github.com/microsoft/pyright/blob/main/docs/configuration.md
 include = ["pyMilk"]
 exclude = ["build/",

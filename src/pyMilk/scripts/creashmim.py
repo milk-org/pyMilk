@@ -39,7 +39,7 @@ TYPE_DICT = {
         'u64': np.uint64,
 }
 
-if __name__ == "__main__":
+def main():
     args = docopt(__doc__)
 
     name = args['<name>']
@@ -49,3 +49,7 @@ if __name__ == "__main__":
 
     creashmim(name, shape, data_type, nb_kw, attempt_reuse=not args['--force'],
               delete_existing=args['--del'], do_zero=args['-z'])
+
+
+if __name__ == "__main__":
+    main()

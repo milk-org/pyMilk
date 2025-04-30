@@ -24,9 +24,7 @@ def main(shm_name: str, kw_name: str, kw_value: str):
     except:
         shm.set_keywords({kw_name: kw_value})
 
-
-if __name__ == "__main__":
-
+def main():
     args = docopt(__doc__)
     shm_name = args["<shm_name>"]
     kw_name = args["<kw_name>"]
@@ -37,3 +35,7 @@ if __name__ == "__main__":
         pass
 
     main(shm_name, kw_name, kw_value)
+
+
+if __name__ == "__main__":
+    main()
