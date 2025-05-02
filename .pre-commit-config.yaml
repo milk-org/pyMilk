@@ -30,6 +30,6 @@ repos:
     hooks:
     -   id: cpp-cuda-linter
         name: cpp-pre-commit
-        entry: ./hraa/utilities/cpp-pre-commit.sh
+        entry: ./cpp-pre-commit.sh
         language: system
         files: \.(cu|hpp|cuh|h|cpp|c)

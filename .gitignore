@@ -16,5 +16,8 @@ __pycache__
 build/
 .vscode
 
+# Coverage
+.coverage
+
 # Eggs
 .eggs/
