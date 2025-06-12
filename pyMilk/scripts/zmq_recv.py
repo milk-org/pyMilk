@@ -1,3 +1,4 @@
+#!/bin/env python
 '''
 zmq_recv.py
 
