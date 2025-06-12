@@ -1,4 +1,5 @@
 #!/bin/env python
+from __future__ import annotations
 '''
 zmq_recv.py
 
@@ -20,7 +21,7 @@ done
 import zmq
 import pickle
 import numpy as np
-from typing import Tuple
+
 from docopt import docopt
 from pyMilk.interfacing.shm import SHM
 
@@ -29,7 +30,7 @@ import logging
 logg = logging.getLogger(__name__)
 
 
-def zmq_recv_loop(host_port: Tuple[str, int], topic: str, out_name: str):
+def zmq_recv_loop(host_port: tuple[str, int], topic: str, out_name: str):
 
     # Get the ZMQ side ready
     context = zmq.Context()
