@@ -1,3 +1,5 @@
+#!/bin/env python
+from __future__ import annotations
 '''
 zmq_send.py
 
@@ -21,12 +23,11 @@ done
 import time
 import zmq
 import pickle
-from typing import Tuple
 from docopt import docopt
 from pyMilk.interfacing.shm import SHM
 
 
-def zmq_send_loop(host_port: Tuple[str, int], shm_name: str, timeout: float,
+def zmq_send_loop(host_port: tuple[str, int], shm_name: str, timeout: float,
                   skip: int = 1, throttle_sec: float = 0.):
 
     # Open shared memories

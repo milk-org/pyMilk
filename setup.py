@@ -3,7 +3,6 @@ pyMilk setup.py
 '''
 
 import os
-import re
 import sys
 import platform
 import subprocess
@@ -12,12 +11,15 @@ from distutils.version import LooseVersion
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
+import shlex
+import pathlib
+
 
 class CMakeExtension(Extension):
 
     def __init__(self, name, package, sourcedir=''):
         Extension.__init__(self, name, sources=[])
-        self.sourcedir = os.path.abspath(sourcedir)
+        self.sourcedir = os.path.abspath(sourcedir) + '/' + self.name
         self.package = package
 
 
@@ -38,17 +40,8 @@ class CMakeBuildExt(build_ext):
                     "\n and pybind must be > 2.11 (pip install --upgrade pybind11)"
             )
 
-        if platform.system() == "Windows":
-            cmake_version = LooseVersion(
-                    re.search(r'version\s*([\d.]+)',
-                              out.decode()).group(1))  # type: ignore
-            if cmake_version < '3.1.0':
-                raise RuntimeError("CMake >= 3.1.0 is required on Windows")
-
         for ext in self.extensions:
             self.build_extension(ext)
-
-        # build_ext.run()
 
     def build_extension(self, ext):
         self.announce("Preparing the build environment", level=3)
@@ -56,9 +49,27 @@ class CMakeBuildExt(build_ext):
         extdir = os.path.abspath(
                 os.path.dirname(self.get_ext_fullpath(ext.name)))
 
+        build_temp_subdir = self.build_temp + '/' + ext.name
+
+        if self.editable_mode:
+            # extdir = $HOME/src/pyMilk/
+            # drop lib in $HOME/src/pyMilk/pyMilk
+            lib_drop_in_directory = extdir + '/' + ext.package
+        else:
+            # self.build_temp is:    build/temp.linux-x86_64-cpython-310
+            # build_temp_subdir is:  build/temp.linux-x86_64-cpython-310/ImageStreamIO
+            # drop lib in:
+            #       build/lib.linux-x86_64-cpython/pyMilk
+            build_temp_path = pathlib.Path(os.path.abspath(self.build_temp))
+            lib_drop_in_directory = str(build_temp_path.parent /
+                                        build_temp_path.name.replace(
+                                                'temp', 'lib', 1) /
+                                        ext.package)
+
+        os.makedirs(build_temp_subdir, exist_ok=True)
+
         cmake_args = [
-                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir + '/' +
-                ext.package + '/',
+                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + lib_drop_in_directory,
                 '-DPYTHON_EXECUTABLE=' + sys.executable,
         ]
 
@@ -94,20 +105,32 @@ class CMakeBuildExt(build_ext):
 
         cmake_args += ['-Dbuild_python_module=ON']
 
-        os.makedirs(self.build_temp, exist_ok=True)
-
         self.announce("Configuring cmake project", level=3)
-        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args,
-                              cwd=self.build_temp)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args,
-                              cwd=self.build_temp)
+        command_a = f'cmake {ext.sourcedir} ' + ' '.join(cmake_args)
+        command_b = f'cmake --build . ' + ' '.join(build_args)
+
+        # Great way to locate a print-debug quickly in the pip build stack.
+        '''
+        raise ValueError(
+                f'{ext} | {ext.name} | {ext.sourcedir} | command_a = "{command_a}"'
+                f' | command _b = "{command_b}" | cmake cwd = {build_temp_subdir}'
+        )
+        '''
+
+        subprocess.check_call(shlex.split(command_a), cwd=build_temp_subdir)
+        subprocess.check_call(shlex.split(command_b), cwd=build_temp_subdir)
 
 
 with open("README.md", 'r') as f:
     long_description = f.read()
 
+#import sys
+#raise ValueError(sys.argv)
+
 setup(
         packages=['pyMilk'],  # same as name
-        ext_modules=[CMakeExtension('ImageStreamIO', package='pyMilk')],
+        ext_modules=[
+                CMakeExtension('ImageStreamIO', package='pyMilk'),
+        ],
         cmdclass=dict(build_ext=CMakeBuildExt),
         long_description=long_description)

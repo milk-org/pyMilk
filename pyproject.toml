@@ -23,8 +23,10 @@ version = "1.2"
 "Homepage" = "http://www.github.com/milk-org/pyMilk"
 
 
+[tool.setuptools.packages.find]
+include=["pyMilk*"]
+
 [tool.setuptools]
-packages = ["pyMilk"]
 script-files = [
                 "pyMilk/visual/shmPlot.py",
                 "pyMilk/visual/shmImshow.py",
