@@ -131,6 +131,7 @@ setup(
         packages=['pyMilk'],  # same as name
         ext_modules=[
                 CMakeExtension('ImageStreamIO', package='pyMilk'),
+                CMakeExtension('ProcessInfo', package='pyMilk'),
         ],
         cmdclass=dict(build_ext=CMakeBuildExt),
         long_description=long_description)
