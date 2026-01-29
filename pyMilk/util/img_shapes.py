@@ -48,8 +48,8 @@ import typing as typ
 
 def image_encode(im: npt.NDArray, s: int) -> npt.NDArray:
     # Cases 4 to 7: x and y must be swapped
-    if s > 3 and s <= 7:
-        return image_encode(im.T, s - 4)
+    if s < 0 or s > 7:
+        raise ValueError("symcode s must be 0-7")
 
     if s == 0:
         return im
@@ -60,10 +60,12 @@ def image_encode(im: npt.NDArray, s: int) -> npt.NDArray:
     elif s == 3:
         return im[::-1, ::-1]
     else:
-        raise ValueError("symcode s must be 0-7")
+        return image_encode(im.T, s - 4)
 
 
 def image_decode(x: npt.NDArray, s: int) -> npt.NDArray:
+    if s < 0 or s > 7:
+        raise ValueError("symcode s must be 0-7")
     return image_encode(x, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
@@ -71,8 +73,8 @@ def cube_front_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
     """
     Encode image cube - dim 0 is the cube axis
     """
-    if s > 3:
-        return cube_front_image_encode(np.swapaxes(cube, 1, 2), s - 4)
+    if s < 0 or s > 7:
+        raise ValueError("symcode s must be 0-7")
 
     if s == 0:
         return cube
@@ -83,10 +85,12 @@ def cube_front_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
     elif s == 3:
         return cube[:, ::-1, ::-1]
     else:
-        raise ValueError("symcode s must be 0-7")
+        return cube_front_image_encode(np.swapaxes(cube, 1, 2), s - 4)
 
 
 def cube_front_image_decode(cube: npt.NDArray, s: int) -> npt.NDArray:
+    if s < 0 or s > 7:
+        raise ValueError("symcode s must be 0-7")
     return cube_front_image_encode(cube, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
@@ -94,8 +98,8 @@ def cube_back_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
     """
     Encode image cube - dim 2 is the cube axis
     """
-    if s > 3:
-        return cube_back_image_encode(np.swapaxes(cube, 0, 1), s - 4)
+    if s < 0 or s > 7:
+        raise ValueError("symcode s must be 0-7")
 
     if s == 0:
         return cube
@@ -106,10 +110,12 @@ def cube_back_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
     elif s == 3:
         return cube[::-1, ::-1, :]
     else:
-        raise ValueError("symcode s must be 0-7")
+        return cube_back_image_encode(np.swapaxes(cube, 0, 1), s - 4)
 
 
 def cube_back_image_decode(cube: npt.NDArray, s: int) -> npt.NDArray:
+    if s < 0 or s > 7:
+        raise ValueError("symcode s must be 0-7")
     return cube_back_image_encode(cube, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 

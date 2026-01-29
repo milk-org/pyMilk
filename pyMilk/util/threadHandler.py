@@ -3,7 +3,35 @@ from __future__ import annotations
 import typing as typ
 
 import time
-from threading import Thread
+from threading import Thread, Event
+
+# THIS IS SHITE
+# There is much better thread action code, see for instance the camstack code for
+# a better guaranteed release on interpreter exit (thread.py)
+# and base.py for the structure (which should become a mixin)
+# and various occurences of threading things in swmain.
+
+
+class MyThread(Thread):
+    """Wrapper around `threading.Thread` that propagates exceptions."""
+
+    def __init__(self, *args, event: Event, **kwargs):
+        self.event = event
+        super().__init__(*args, **kwargs)
+
+    def run(self):
+        try:
+            super().run()
+        except BaseException as e:
+            self.exc = e
+        finally:
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=None):
+        self.event.set()
+        super().join(timeout)
+        if self.exc:
+            raise self.exc
 
 
 class ThreadHandler:
@@ -29,7 +57,10 @@ class ThreadHandler:
         self._t_threadSuspend = True
         self._t_threadDie = False
 
-        self.thread: Thread | None = None
+        self.thread: MyThread | None = None
+
+        self.re_raise_exceptions = True
+        self.exception_to_raise: Exception | None = None
 
         self._t_initThread(daemonize)
 
@@ -40,9 +71,10 @@ class ThreadHandler:
         except:
             pass
 
-        self.thread = Thread(target=self._t_runThread)
+        self.thread = MyThread(target=self._t_runThread,
+                               event=self._t_threadEvent)
+        self.thread.daemon = daemonize
         self.thread.start()
-        self.thread.setDaemon(daemonize)
 
     def threadPause(self) -> None:
         self._t_threadSuspend = True
@@ -64,6 +96,8 @@ class ThreadHandler:
             if self._t_threadSuspend:
                 time.sleep(self._t_pauseSleepMs / 1000.)
             else:
+                # What if there's an exception here?
+                # Should we pass it to the main thread? how?
                 self.threadCall()
 
     def threadCall(self) -> None:

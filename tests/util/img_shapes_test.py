@@ -59,9 +59,22 @@ def test_image_encode_decode(shape, dtype):
 
 
 def test_image_encode_invalid_symcode():
-    test_data = make_random_array((2, 2))
-    with pytest.raises(ValueError):
-        image_encode(test_data, 8)
+    test_data_2d = make_random_array((2, 3))
+    test_data_3d = make_random_array((2, 3, 4))
+
+    for s in [-1, 8]:
+        with pytest.raises(ValueError):
+            image_encode(test_data_2d, s)
+        with pytest.raises(ValueError):
+            image_decode(test_data_2d, s)
+        with pytest.raises(ValueError):
+            cube_front_image_encode(test_data_3d, s)
+        with pytest.raises(ValueError):
+            cube_front_image_decode(test_data_3d, s)
+        with pytest.raises(ValueError):
+            cube_back_image_encode(test_data_3d, s)
+        with pytest.raises(ValueError):
+            cube_back_image_decode(test_data_3d, s)
 
 
 @pytest.mark.parametrize("shape", TEST_SHAPES_3D)
