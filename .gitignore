@@ -21,3 +21,8 @@ build/
 
 # Eggs
 .eggs/
+gcov_html/c_coverage.css
+gcov_html/c_coverage.html
+gcov_html/c_coverage.ImageStreamIO.c.1a50438e505bb92f62b07e94fbe44708.html
+gcov_html/c_coverage.ImageStreamIO.h.f4a3793738f58abedf2323497c224b4e.html
+gcov_html/c_coverage.ImageStreamIOWrap.cpp.95341f6d0cb07caad8250e9c40aa6b0e.html

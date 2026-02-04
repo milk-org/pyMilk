@@ -52,6 +52,7 @@ class CMakeBuildExt(build_ext):
         build_temp_subdir = self.build_temp + '/' + ext.name
 
         if self.editable_mode:
+            # When running `pip install -e .`
             # extdir = $HOME/src/pyMilk/
             # drop lib in $HOME/src/pyMilk/pyMilk
             lib_drop_in_directory = extdir + '/' + ext.package
@@ -73,20 +74,14 @@ class CMakeBuildExt(build_ext):
                 '-DPYTHON_EXECUTABLE=' + sys.executable,
         ]
 
-        cfg = 'Debug' if self.debug else 'Release'
+        if os.environ.get('COVERAGE', None) == 'ON':
+            cfg = 'Coverage'
+        else:
+            cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]
 
-        if platform.system() == "Windows":
-            cmake_args += [
-                    '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(
-                            cfg.upper(), extdir)
-            ]
-            if sys.maxsize > 2**32:
-                cmake_args += ['-A', 'x64']
-            build_args += ['--', '/m']
-        else:
-            cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
-            build_args += ['--', '-j%d' % os.cpu_count()]  #, 'VERBOSE=1']
+        cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
+        build_args += ['--', '-j%d' % os.cpu_count()]  #, 'VERBOSE=1']
 
         if "CUDA_ROOT" in os.environ:
             if os.path.isfile('{}/bin/gcc'.format(os.environ["CUDA_ROOT"])):
