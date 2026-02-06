@@ -27,7 +27,7 @@ import time
 import glob
 
 _CORES = os.sched_getaffinity(0)
-from CacaoProcessTools import fps as CPTFPS, FPS_type, FPS_flags
+from pyMilk.CPTlocalWrap import fps as CPTFPS, FPS_type, FPS_flags
 
 os.sched_setaffinity(0, _CORES)
 

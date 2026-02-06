@@ -16,24 +16,6 @@ and whether the tests are run from pyMilk dir or externally. This matters due to
 '''
 
 
-def hack_cacaoprocesstools_from_abspath():
-    '''
-    Symlink the installed CacaoProcessTools cpython extension.
-    This is necessary because CPT is not (yet) packaged as part of pyMilk / part of this
-    repo's build system. It's fully external.
-    '''
-    os.makedirs('/tmp/nox/', exist_ok=True)
-    try:
-        os.symlink(
-                '/home/vdeo/mambaforge/lib/python3.10/site-packages/CacaoProcessTools.cpython-310-x86_64-linux-gnu.so',
-                '/tmp/nox/CacaoProcessTools.cpython-310-x86_64-linux-gnu.so')
-    except FileExistsError:
-        ...
-
-    sys.path.append('/tmp/nox/')
-    import CacaoProcessTools
-
-
 @nox.session
 def tests_not_installed_inner(session: nox.Session):
     '''
@@ -75,11 +57,10 @@ def tests_editable_outer(session: nox.Session):
     session.install("-e", ".")
     session.install("pyright")
 
-    hack_cacaoprocesstools_from_abspath()
-
     # Run tests from outside the project root
     project_dir = os.path.abspath(os.getcwd())
-    with session.chdir("/tmp/nox"):  #TODO maybe
+    session.chdir('/tmp')
+    with session.chdir(session.create_tmp()):
         session.run("pytest", "--pdb", project_dir)
 
 
@@ -94,10 +75,9 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     session.install("pytest")
     session.install(".")
 
-    hack_cacaoprocesstools_from_abspath()
-
     # Change cwd to something else...
     # Otherwise name collision with the source folder, rather than the install in the venv.
     project_dir = os.path.abspath(os.getcwd())
-    with session.chdir("/tmp/nox"):
+    session.chdir('/tmp')
+    with session.chdir(session.create_tmp()):
         session.run("pytest", project_dir)

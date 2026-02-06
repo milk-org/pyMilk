@@ -125,6 +125,7 @@ with open("README.md", 'r') as f:
 setup(
         packages=['pyMilk'],  # same as name
         ext_modules=[
+                CMakeExtension('CPTlocal', package='pyMilk'),
                 CMakeExtension('ImageStreamIO', package='pyMilk'),
         ],
         cmdclass=dict(build_ext=CMakeBuildExt),
