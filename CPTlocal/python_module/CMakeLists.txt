@@ -8,6 +8,15 @@ set(CMAKE_CXX_STANDARD 14)
 
 project(${LIBNAME} LANGUAGES CXX)
 
+# Set a default build type if none was specified
+set(default_build_type "Release")
+if(NOT CMAKE_BUILD_TYPE)
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}")
+endif()
+
+message("CMAKE_BUILD_TYPE : ${CMAKE_BUILD_TYPE}")
+
 
 if(NOT TARGET pybind11)
 execute_process(COMMAND bash -c "${PYTHON_EXECUTABLE} -m pybind11 --includes"
@@ -32,6 +41,11 @@ SUFFIX
 
 else()
 pybind11_add_module(${LIBNAME} CacaoProcessTools.cpp)
+endif()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  target_link_options(${LIBNAME} PRIVATE --coverage)
+  target_link_libraries(${LIBNAME} PRIVATE gcov)
 endif()
 
 message("This is MILK_INSTALLDIR=$ENV{MILK_INSTALLDIR}")

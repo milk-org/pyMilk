@@ -6,6 +6,10 @@ requires = ["setuptools>=58", "wheel", 'pybind11>=2.11', 'cmake']
 authors = [
   {name = "Vincent Deo", email = "vdeo@naoj.org"},
 ]
+description = "Python bindings and utilities to use with MILK and CACAO"
+name = "pyMilk"
+readme = "README.md"
+version = "1.2"
 dependencies = [
   "docopt",
   "libtmux",
@@ -13,11 +17,6 @@ dependencies = [
   "tqdm",
   "astropy",
 ]
-
-description = "Python bindings and utilities to use with MILK and CACAO"
-name = "pyMilk"
-readme = "README.md"
-version = "1.2"
 
 [project.urls]
 "Homepage" = "http://www.github.com/milk-org/pyMilk"

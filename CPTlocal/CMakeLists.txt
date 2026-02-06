@@ -22,7 +22,19 @@ configure_file (
   )
 message(" VERSION = ${PROJECT_VERSION}")
 
-add_compile_options(-Ofast)
+set(CMAKE_C_FLAGS_DEBUG     "-O0 -g -Wall -Wextra -std=gnu17 -Wno-sign-compare")
+# cmake -DCMAKE_BUILD_TYPE=Coverage
+set(CMAKE_C_FLAGS_COVERAGE     "-O0 -g --coverage -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS_COVERAGE     "-O0 -g --coverage -fprofile-arcs -ftest-coverage")
+# cmake -DCMAKE_BUILD_TYPE=Release
+set(CMAKE_C_FLAGS_RELEASE     "-Ofast -DNDEBUG -std=gnu17")
+
+# Set a default build type if none was specified
+set(default_build_type "Release")
+if(NOT CMAKE_BUILD_TYPE)
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}")
+endif()
 
 if(build_python_module)
   add_subdirectory(python_module)
