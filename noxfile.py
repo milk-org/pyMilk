@@ -81,3 +81,26 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     session.chdir('/tmp')
     with session.chdir(session.create_tmp()):
         session.run("pytest", project_dir)
+
+
+@nox.session
+def tests_run_coverage(session: nox.Session):
+    print(os.path.abspath(os.getcwd()))
+    session.run("./clean.sh", external=True)
+
+    session.env['COVERAGE'] = 'ON'
+    session.install('pybind11')
+
+    session.run(*('python setup.py build_ext --inplace --build-temp ./build'.
+                  split()))
+    print(os.path.abspath(os.getcwd()))
+    import shutil, glob, pathlib
+    for file in glob.glob('./build/pyMilk/*.so'):
+        fname = pathlib.Path(file).name
+        shutil.copyfile(file, f'pyMilk/{fname}')
+
+    session.run('coverage', 'run')
+    session.run('coverage', 'report')  # TODO where html??
+    session.run(*(
+            'gcovr --verbose -r . --html-details -o gcov_html/c_coverage.html'.
+            split()))
