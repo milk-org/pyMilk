@@ -1,0 +1,5 @@
+#define PROJECT_NAME "CPTlocal"
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 00
+#define VERSION_PATCH 00
+#define VERSION_OPTION ""
