@@ -5,17 +5,17 @@
  *
  */
 
-#ifndef _PROCESSINFO_H
-#define _PROCESSINFO_H
+#ifndef _PINFO_STRUCT_H
+#define _PINFO_STRUCT_H
 
-#include <time.h>
-#include <sys/types.h>
 #include <stdint.h>
 #include <sched.h> // for cpu_set_t
 
 #include "ImageStreamIO/ImageStruct.h"
 
-typedef long imageID;
+typedef long imageID; // TODO
+
+#define SHAREDPROCDIR SHAREDMEMDIR
 
 #define STRINGMAXLEN_PROCESSINFO_NAME        80
 #define STRINGMAXLEN_PROCESSINFO_SRCFUNC     200
@@ -47,17 +47,18 @@ typedef long imageID;
 // uncomment to enable LOGFILE for debugging
 //#define PROCESSINFO_LOGFILE
 
+// TODO this is global caching, I don't want caching at this stage.
 //
 // This structure maintains a list of active processes
 // It is used to quickly build (without scanning directory) an array of
 // PROCESSINFO
 //
+/*
 typedef struct
 {
     pid_t PIDarray[PROCESSINFOLISTSIZE];
-    int   active[PROCESSINFOLISTSIZE];
-    char  pnamearray[PROCESSINFOLISTSIZE]
-    [STRINGMAXLEN_PROCESSINFO_NAME]; // short name
+    int32_t   active[PROCESSINFOLISTSIZE];
+    char  pnamearray[PROCESSINFOLISTSIZE][STRINGMAXLEN_PROCESSINFO_NAME]; // short name
     double createtime[PROCESSINFOLISTSIZE];
 
 } PROCESSINFOLIST;
@@ -65,6 +66,7 @@ typedef struct
 
 extern PROCESSINFOLIST *pinfolist;
 extern pid_t CLIPID;
+//*/
 
 /**
  *
@@ -83,16 +85,15 @@ typedef struct
     char source_FUNCTION
     [STRINGMAXLEN_PROCESSINFO_SRCFUNC];             /// source code function
     char source_FILE[STRINGMAXLEN_PROCESSINFO_SRCFILE]; /// source code file
-    int  source_LINE;                                   /// source code line
+    int32_t  source_LINE;                                   /// source code line
 
     pid_t PID; /// process ID; file name is /tmp/proc.PID.shm
 
     struct timespec createtime; // time at which pinfo was created
 
-    long loopcnt; // counter, useful for loop processes to monitor activity
-    long
-    loopcntMax; // exit loop if loopcnt = loopcntMax. Set to -1 for infinite loop
-    int CTRLval; // control value to be externally written.
+    int64_t loopcnt; // counter, useful for loop processes to monitor activity
+    int64_t loopcntMax; // exit loop if loopcnt = loopcntMax. Set to -1 for infinite loop
+    int32_t CTRLval; // control value to be externally written.
     // 0: run                     (default)
     // 1: pause
     // 2: increment single step (will go back to 1)
@@ -102,7 +103,7 @@ typedef struct
     // name of tmux session in which process is running, or
     // "NULL"
 
-    int loopstat;
+    int32_t loopstat;
     // 0: INIT       Initialization before loop
     // 1: ACTIVE     in loop
     // 2: PAUSED     loop paused (do not iterate)
@@ -112,7 +113,7 @@ typedef struct
     // 6: CRASHED    pid has gone away without proper exit sequence. Will attempt to generate exit log file (using atexit) to identify crash location
 
     char statusmsg[STRINGMAXLEN_PROCESSINFO_STATUSMSG]; // status message
-    int  statuscode;                                    // status code
+    int32_t  statuscode;                                    // status code
 
 #ifdef PROCESSINFO_LOGFILE
     FILE *logFile;
@@ -128,54 +129,53 @@ typedef struct
     imageID triggerstreamID; // -1 if not initialized
     ino_t   triggerstreaminode;
     char    triggerstreamname[STRINGMAXLEN_IMAGE_NAME];
-    int     triggersem; // semaphore index
-    uint64_t
-    triggerstreamcnt; // previous value of trigger counter, updates on trigger
+    int32_t triggersem; // semaphore index
+    uint64_t triggerstreamcnt; // previous value of trigger counter, updates on trigger
     struct timespec triggerdelay;   // for PROCESSINFO_TRIGGERMODE_DELAY
     struct timespec triggertimeout; // how long to wait until trigger ?
     uint64_t        trigggertimeoutcnt;
-    int triggermissedframe; // have we missed any frame, if yes how many ?
+    int32_t triggermissedframe; // have we missed any frame, if yes how many ?
     //  0  : no missed frame, loop has been waiting for semaphore to be posted
     //  1  : no missed frame, but semaphore was already posted and at 1 when triggering
     //  2+ : frame(s) missed
     uint64_t triggermissedframe_cumul; // cumulative missed frames
-    int      triggerstatus;            // see TRIGGERSTATUS codes
+    int32_t    triggerstatus;            // see TRIGGERSTATUS codes
 
     // Pointer to trigger image (process-local, not valid in SHM for other processes)
     // Used by libprocessinfo to wait on stream without depending on global data
     IMAGE *trigger_image;
 
-    int       RT_priority; // -1 if unused. 0-99 for higher priority
+    int32_t RT_priority; // -1 if unused. 0-99 for higher priority
     cpu_set_t CPUmask;
 
     // OPTIONAL TIMING MEASUREMENT
     // Used to measure how long loop process takes to complete task
     // Provides means to stop/pause loop process if timing constraints exceeded
     //
-    int MeasureTiming; // 1 if timing is measured, 0 otherwise
+    int32_t MeasureTiming; // 1 if timing is measured, 0 otherwise
 
     // the last PROCESSINFO_NBtimer times are stored in a circular buffer, from
     // which timing stats are derived
-    int timerindex;      // last written index in circular buffer
-    int timingbuffercnt; // increments every cycle of the circular buffer
+    int32_t timerindex;      // last written index in circular buffer
+    int32_t timingbuffercnt; // increments every cycle of the circular buffer
     struct timespec texecstart[PROCESSINFO_NBtimer]; // task starts
     struct timespec texecend[PROCESSINFO_NBtimer];   // task ends
 
-    long dtmedian_iter_ns; // median time offset between iterations [nanosec]
-    long dtmedian_exec_ns; // median compute/busy time [nanosec]
+    int64_t dtmedian_iter_ns; // median time offset between iterations [nanosec]
+    int64_t dtmedian_exec_ns; // median compute/busy time [nanosec]
 
     // If enabled=1, pause process if dtiter larger than limit
-    int  dtiter_limit_enable;
-    long dtiter_limit_value;
-    long dtiter_limit_cnt;
+    int32_t  dtiter_limit_enable;
+    int64_t dtiter_limit_value;
+    int64_t dtiter_limit_cnt;
 
     // If enabled=1, pause process if dtexec larger than limit
-    int  dtexec_limit_enable;
-    long dtexec_limit_value;
-    long dtexec_limit_cnt;
+    int32_t  dtexec_limit_enable;
+    int64_t dtexec_limit_value;
+    int64_t dtexec_limit_cnt;
 
     char description[STRINGMAXLEN_PROCESSINFO_DESCRIPTION];
 
 } PROCESSINFO;
 
-#endif
+#endif // #ifndef _PINFO_STRUCT_H

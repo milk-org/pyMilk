@@ -5,9 +5,8 @@ set(LIBNAME "milkprocessinfo")
 project(${LIBNAME} LANGUAGES C)
 
 set(SOURCES
+    processinfo_exec.c
     processinfo_compute_status.c
-    processinfo_exec_end.c
-    processinfo_exec_start.c
     processinfo_globals.c
     processinfo_loopstep.c
     processinfo_procdirname.c
@@ -24,7 +23,7 @@ set(SOURCES
     quicksort.c
     timeutils.c
 )
-    
+
 # Core library (no TUI/ncurses dependency)
 add_library(milkprocessinfo SHARED ${SOURCES})
 
@@ -36,11 +35,11 @@ target_include_directories(${LIBNAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DI
 
 # Link dependencies
 target_link_libraries(milkprocessinfo PUBLIC ImageStreamIO rt pthread m)
-    
+
 install(TARGETS milkprocessinfo EXPORT milkTargets DESTINATION lib)
-    
+
 # Add milk-procinfo-help executable
-install(FILES 
+install(FILES
     processinfo.h
     processtools.h
     processtools_trigger.h
