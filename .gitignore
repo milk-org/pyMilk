@@ -19,7 +19,7 @@ _build/
 
 # Coverage
 .coverage
-_gcovr
+gcov_html/
 
 # Eggs
 .eggs/
