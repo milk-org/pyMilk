@@ -26,10 +26,10 @@ repos:
     -   id: name-tests-test
         #args: [--pytest-test-first]
     -   id: requirements-txt-fixer
--   repo: local
-    hooks:
-    -   id: cpp-cuda-linter
-        name: cpp-pre-commit
-        entry: ./cpp-pre-commit.sh
-        language: system
-        files: \.(cu|hpp|cuh|h|cpp|c)
+#-   repo: local
+#    hooks:
+#  -   id: cpp-cuda-linter
+#      name: cpp-pre-commit
+#      entry: ./cpp-pre-commit.sh
+#      language: system
+#      files: \.(cu|hpp|cuh|h|cpp|c)

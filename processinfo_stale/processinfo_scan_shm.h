@@ -21,12 +21,12 @@ typedef struct
     // So scanner can keep history local. But if we restart scanner?
     // Let's keep history in SHM so it persists? Or just local static in scanner.
     // TUI expects 'float CPUload' (0.0 to 1.0).
-    
+
     // Process Scan Results & Requests
     // Indexed by pindex (same as processinfo.list.shm)
-    
+
     uint8_t request_scan[PROCESSINFOLISTSIZE]; // 1 if any reader wants details for this index
-    
+
     // Aggregated stats for display
     // We assume PROCESSINFODISP is sufficient for display
     PROCESSINFODISP pinfodisp[PROCESSINFOLISTSIZE];
