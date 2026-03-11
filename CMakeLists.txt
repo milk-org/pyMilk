@@ -15,3 +15,4 @@ endif()
 
 add_subdirectory(ImageStreamIO)
 add_subdirectory(ProcessInfo)
+add_subdirectory(Fps)
