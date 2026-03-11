@@ -15,6 +15,7 @@
 #include "fps_internal.h"
 #include "fps_globals.h"
 #include "fps_shmdirname.h"
+#include "fps_GetParamIndex.h"
 
 #ifdef MILK_MODULE
 #include "CLIcore.h"
@@ -201,10 +202,10 @@ errno_t function_parameter_struct_realloc(
     int NBparamMAX_new
 )
 {
-    char shmdname[200];
-    char SM_fname[200];
+    char shmdname[180];
+    char SM_fname[300];
     function_parameter_struct_shmdirname(shmdname);
-    snprintf(SM_fname, 200, "%s/%s.fps.shm", shmdname, fps->md->name);
+    snprintf(SM_fname, 300, "%s/%s.fps.shm", shmdname, fps->md->name);
 
     size_t sharedsize_old = sizeof(FUNCTION_PARAMETER_STRUCT_MD) + sizeof(FUNCTION_PARAMETER) * fps->md->NBparamMAX;
     size_t sharedsize_new = sizeof(FUNCTION_PARAMETER_STRUCT_MD) + sizeof(FUNCTION_PARAMETER) * NBparamMAX_new;

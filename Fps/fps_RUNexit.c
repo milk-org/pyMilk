@@ -7,6 +7,8 @@
 #include "fps_internal.h"
 #include "fps_globals.h"
 
+#include "fps_connect.h"
+
 uint16_t function_parameter_RUNexit(FUNCTION_PARAMETER_STRUCT *fps)
 {
     //fps->md->confpid = 0;
