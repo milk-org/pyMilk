@@ -30,14 +30,15 @@ def hack_cacaoprocesstools_from_abspath():
             os.remove(
                     f'/tmp/nox/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so'
             )
+        except FileNotFoundError:
+            ...
+        try:
             os.symlink(
                     f'{os.environ["MILK_INSTALLDIR"]}/python/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so',
                     f'/tmp/nox/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so'
             )
         except FileExistsError:
             ...
-
-    import CacaoProcessTools
 
 
 @nox.session
