@@ -15,6 +15,8 @@ The functions below test for editable/non-editable install
 and whether the tests are run from pyMilk dir or externally. This matters due to PYTHONPATH resolution.
 '''
 
+#def clean_all_possible_stale_things():
+
 
 def hack_cacaoprocesstools_from_abspath():
     '''
@@ -23,14 +25,18 @@ def hack_cacaoprocesstools_from_abspath():
     repo's build system. It's fully external.
     '''
     os.makedirs('/tmp/nox/', exist_ok=True)
-    try:
-        os.symlink(
-                '/home/vdeo/mambaforge/lib/python3.10/site-packages/CacaoProcessTools.cpython-310-x86_64-linux-gnu.so',
-                '/tmp/nox/CacaoProcessTools.cpython-310-x86_64-linux-gnu.so')
-    except FileExistsError:
-        ...
+    for py_ver in range(7, 15):
+        try:
+            os.remove(
+                    f'/tmp/nox/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so'
+            )
+            os.symlink(
+                    f'{os.environ["MILK_INSTALLDIR"]}/python/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so',
+                    f'/tmp/nox/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so'
+            )
+        except FileExistsError:
+            ...
 
-    sys.path.append('/tmp/nox/')
     import CacaoProcessTools
 
 
@@ -41,6 +47,7 @@ def tests_not_installed_inner(session: nox.Session):
     INNER testing, ie we run pytest while PWD is $PYMILK_ROOT (often $HOME/src/pyMilk/)
     ACTUALLY THAT CANNOT WORK, due to uncompiled ImageStreamIO / CacaoProcessTools which gets compiled on install.
     '''
+    import CacaoProcessTools
     ...
 
 
@@ -50,17 +57,17 @@ def tests_editable_inner(session: nox.Session):
     EDITABLE installation, ie `pip install -e .`; test from inside the project root.
     INNER testing, ie we run pytest while PWD is $PYMILK_ROOT (often $HOME/src/pyMilk/)
     '''
-    session.run("./clean.sh", external=True)
+    #session.run("./clean.sh", external=True)
+
+    hack_cacaoprocesstools_from_abspath()
 
     session.install("pytest", "pyright")
     session.install("-e", ".")
     session.install("pyright")
 
     # Run tests from inside the project root
-    session.run("pytest")
-
-    # What about the CacaoProcessTools dependency????
-    # We basically need all of milk for that to work...
+    # Pass the env for CacaoProcessTools
+    session.run("pytest", env={'PYTHONPATH': '/tmp/nox'})
 
 
 @nox.session
@@ -69,18 +76,19 @@ def tests_editable_outer(session: nox.Session):
     EDITABLE installation, ie `pip install -e .`; test from outside the project root.
     OUTER testing, ie we run pytest while PWD is NOT $PYMILK_ROOT; here's its /tmp/nox
     '''
-    session.run("./clean.sh", external=True)
+    #session.run("./clean.sh", external=True)
+
+    hack_cacaoprocesstools_from_abspath()
 
     session.install("pytest", "pyright")
     session.install("-e", ".")
     session.install("pyright")
 
-    hack_cacaoprocesstools_from_abspath()
-
     # Run tests from outside the project root
     project_dir = os.path.abspath(os.getcwd())
-    with session.chdir("/tmp/nox"):  #TODO maybe
-        session.run("pytest", "--pdb", project_dir)
+    os.makedirs("/tmp/nox_runtime", exist_ok=True)
+    with session.chdir("/tmp/nox_runtime"):
+        session.run("pytest", project_dir, env={'PYTHONPATH': '/tmp/nox'})
 
 
 @nox.session
@@ -89,7 +97,7 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     NON-EDITABLE installation, ie `pip install .`; run from both inside and outside the project root.
     IN and OUT testing
     '''
-    session.run("./clean.sh", external=True)
+    #session.run("./clean.sh", external=True)
 
     session.install("pytest")
     session.install(".")
@@ -99,5 +107,6 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     # Change cwd to something else...
     # Otherwise name collision with the source folder, rather than the install in the venv.
     project_dir = os.path.abspath(os.getcwd())
-    with session.chdir("/tmp/nox"):
-        session.run("pytest", project_dir)
+    os.makedirs("/tmp/nox_runtime", exist_ok=True)
+    with session.chdir("/tmp/nox_runtime"):
+        session.run("pytest", project_dir, env={'PYTHONPATH': '/tmp/nox'})
