@@ -69,6 +69,7 @@ source = ["./pyMilk"]
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
+    'TYPE_CHECKING:',
     "def __repr__",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",

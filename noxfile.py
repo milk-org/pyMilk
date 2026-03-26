@@ -15,7 +15,6 @@ The functions below test for editable/non-editable install
 and whether the tests are run from pyMilk dir or externally. This matters due to PYTHONPATH resolution.
 '''
 
-
 @nox.session
 def tests_not_installed_inner(session: nox.Session):
     '''
@@ -36,7 +35,6 @@ def tests_editable_inner_outer(session: nox.Session):
 
     We do both to ensure package name shadowing when running in the directory is not an issue.
     '''
-    session.run("./clean.sh", external=True)
 
     session.install("pytest", "pyright")
     session.install("-e", ".")
@@ -49,26 +47,7 @@ def tests_editable_inner_outer(session: nox.Session):
     project_dir = os.path.abspath(os.getcwd())
     session.chdir('/tmp')
     with session.chdir(session.create_tmp()):
-        session.run("pytest", "--pdb", project_dir)  # why pdb???
-
-
-@nox.session
-def tests_editable_outer(session: nox.Session):
-    '''
-    EDITABLE installation, ie `pip install -e .`; test from outside the project root.
-
-    '''
-    session.run("./clean.sh", external=True)
-
-    session.install("pytest", "pyright")
-    session.install("-e", ".")
-    #session.install("pyright")
-
-    # Run tests from outside the project root
-    project_dir = os.path.abspath(os.getcwd())
-    session.chdir('/tmp')
-    with session.chdir(session.create_tmp()):
-        session.run("pytest", "--pdb", project_dir)  # why pdb???
+        session.run("pytest")
 
 
 @nox.session
@@ -77,7 +56,7 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     NON-EDITABLE installation, ie `pip install .`; run from both inside and outside the project root.
     IN and OUT testing
     '''
-    session.run("./clean.sh", external=True)
+    #session.run("./clean.sh", external=True)
 
     session.install("pytest")
     session.install(".")
@@ -90,7 +69,7 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
         session.run("pytest", project_dir)
 
 
-@nox.session
+@nox.session(default=False)
 def tests_run_coverage(session: nox.Session):
     print(os.path.abspath(os.getcwd()))
     session.run("./clean.sh", external=True)

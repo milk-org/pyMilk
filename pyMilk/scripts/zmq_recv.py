@@ -1,5 +1,4 @@
 #!/bin/env python
-from __future__ import annotations
 '''
 zmq_recv.py
 
@@ -11,6 +10,8 @@ Options:
     <shm_name>    SHM to listen for - carried over from source server
     -s=<name_OR>  name override - reassign the SHM with a different name
 '''
+from __future__ import annotations
+
 '''bash
 IP=""
 for CH in 00 01 02 03 04 05 06 07 08 09 10 11; do

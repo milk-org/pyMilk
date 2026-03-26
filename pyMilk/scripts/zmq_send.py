@@ -1,5 +1,4 @@
 #!/bin/env python
-from __future__ import annotations
 '''
 zmq_send.py
 
@@ -13,6 +12,7 @@ Options:
     -f <frate>      Throttling down to <frate> FPS
     -s <skip>       Send every n-th frame [default: 1]
 '''
+from __future__ import annotations
 '''bash
 IP=""
 for CH in 00 01 02 03 04 05 06 07 08 09 10 11; do

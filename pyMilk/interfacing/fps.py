@@ -35,15 +35,23 @@ if typ.TYPE_CHECKING:
     FPVal: typ.TypeAlias = str | bool | int | float
 
 
-class FPSErrnoError(Exception):
+class FPSBaseError(Exception):
     pass
 
 
-class FPSDoesntExistError(Exception):
+class FPSErrnoError(FPSBaseError):
     pass
 
 
-class SmartFPSInitError(Exception):
+class FPSOverrideError(FPSBaseError):
+    pass
+
+
+class FPSDoesntExistError(FPSBaseError):
+    pass
+
+
+class SmartFPSInitError(FPSBaseError):
     pass
 
 
@@ -55,29 +63,27 @@ class FPS:
     @classmethod
     def create(cls: type[_T_Subclass], name: str,
                force_recreate: bool = False) -> _T_Subclass:
+        '''
+        Create an empty FPS.
+        The only attribute set is the name.
+        '''
         fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{name}.fps.shm'
-        if force_recreate and os.path.exists(fps_filepath):
-            os.remove(fps_filepath)
+        if os.path.exists(fps_filepath):
+            if force_recreate:
+                os.remove(fps_filepath)
+            else:
+                raise FPSOverrideError(
+                        f"FPS {name} exist and {force_recreate=}.")
 
-        # FIXME we need an API bind. OR AT LEAST USE THE milk-session wrapper
-        SHM_DIR = os.environ["MILK_SHM_DIR"]
-        os.system(
-                f'MILK_SHM_DIR={SHM_DIR} milk-exec "fpscreate 1000 {name} Comment"'
-        )
+        _fps = CPTFPS(name,
+                      True)  # thrown away, opened as "read" in constructor
+
         fps = cls(name)
         fps.add_param('Name', 'Name', FPS_type.STRING,
                       FPS_flags.DEFAULT_STATUS)  # 0x5 = VISIBLE | ACTIVE
         fps['Name'] = name
 
-        fps.post_create_set_defaults()
-
         return fps
-
-    def post_create_set_defaults(self) -> None:
-        '''
-        Handle for subclassing
-        '''
-        return None
 
     def __init__(self, name: str) -> None:
         self.name = name
@@ -99,6 +105,7 @@ class FPS:
 
     def add_param(self, key: str, comment: str, datatype: int,
                   flags: int = FPS_flags.DEFAULT_INPUT) -> None:
+        # TODO: _autorelink implementation !
         self.fps.add_entry(key, comment, datatype, flags)
         self.key_types[key] = datatype
 
@@ -107,12 +114,14 @@ class FPS:
         self.fps.un
 
     def set_param(self, key: str, value: FPVal) -> None:
+        # TODO: _autorelink implementation !
         if key in self.key_types:
             self.fps[key] = value
         else:
             raise ValueError(f'set_param: key {key} not in FPS {self.name}.')
 
     def get_param(self, key: str) -> FPVal:
+        # TODO: _autorelink implementation !
         if key in self.key_types:
             return self.fps[key]
         else:
@@ -280,6 +289,9 @@ class SmartAttributesFPS(FPS):
     gain: ('Averaging gain', FPS_type.FLOAT64, FPS_flags.DEFAULT_INPUT)
 
     Am I reinventing named tuples / named dicts?
+
+    # TODO: make a subclass wherein _DICT_METADATA just maps all typical types to FPS types.
+    # TODO: and just puts FPS_flags to RW at runtime at all time.
     '''
 
     _DICT_METADATA: dict[str, tuple[str, FPS_type, FPS_flags]]
@@ -297,6 +309,7 @@ class SmartAttributesFPS(FPS):
         but we'd have to delete the FPS created by __new__ in case of non-compliance and aborting
         the __init__... so better in __new__
         '''
+        cls._cls_assert_find_annotations_not_overridden()
         cls._cls_metadata_checks()
         return super(SmartAttributesFPS, cls).__new__(cls)
 
@@ -333,19 +346,45 @@ class SmartAttributesFPS(FPS):
                 )
 
     @classmethod
-    def _cls_find_annotations(cls: type[_T_Subclass]
-                              ) -> typ.Iterable[str]:  # Really a dict_keys
-        annotations = cls.__annotations__.copy()
-        next_in_mro = cls.__mro__[
-                1]  # This will break multiple inheritance if any
-        if hasattr(next_in_mro, '_cls_find_annotations'):
-            annotations.update(
-                    next_in_mro._cls_find_annotations())  # type: ignore
+    def _cls_assert_find_annotations_not_overridden(cls) -> None:
+        for cls_in_hierarchy in cls.__mro__:
+            if cls_in_hierarchy is SmartAttributesFPS:
+                break
+            if '_cls_find_annotations' in cls_in_hierarchy.__dict__:
+                raise SmartFPSInitError(
+                        f'{cls_in_hierarchy.__name__} overrides '
+                        '_cls_find_annotations, which is forbidden. '
+                        'Use _cls_annotation_technical_keys_to_remove instead.'
+                )
 
-        if '_DICT_METADATA' in annotations:
-            del annotations['_DICT_METADATA']
+    @classmethod
+    def _cls_find_annotations(cls: type[_T_Subclass]
+                              ) -> dict[str, typ.Any]:  # Really a dict_keys
+
+        # Since this explores the MRO, it must NOT be subclassed !!!
+        annotations = {}
+        all_to_remove = set()
+        for cls_in_hierarchy in cls.__mro__[::-1]:
+            if not hasattr(cls_in_hierarchy, '__annotations__'):
+                continue
+
+            annotations.update(cls_in_hierarchy.__annotations__.copy())
+            if not hasattr(cls_in_hierarchy,
+                           '_cls_annotation_technical_keys_to_remove'):
+                continue
+
+            all_to_remove.update(cls_in_hierarchy.
+                                 _cls_annotation_technical_keys_to_remove())
+
+        for key in all_to_remove:
+            del annotations[key]
 
         return annotations
+
+    @classmethod
+    def _cls_annotation_technical_keys_to_remove(cls: type[_T_Subclass]
+                                                 ) -> list[str]:
+        return ['_DICT_METADATA']
 
     def _prop_fget(self, prop_name: str):
 
@@ -381,3 +420,53 @@ class SmartAttributesFPS(FPS):
             #setattr(self, '___' + key, getattr(self, key))
             setattr(self.__class__, key,
                     property(self._prop_fget(key), self._prop_fset(key)))
+
+
+class SmartAttributesFPSAutoMetadata(SmartAttributesFPS):
+    '''
+    Subclass of SmartAttributeFPS intended for mostly python use.
+
+    Question: what happens if the underlying FPS exists and the flags don't match ???
+    '''
+    _cls_metadata_is_init: typ.ClassVar[bool] = False
+    _ANNOTATION_TYPE_MAPPER: typ.ClassVar = {
+            bool: FPS_type.ONOFF,
+            int: FPS_type.INT64,
+            float: FPS_type.FLOAT64,
+            str: FPS_type.STRING,
+    }
+
+    _T_Subclass = typ.TypeVar('_T_Subclass',
+                              bound='SmartAttributesFPSAutoMetadata'
+                              )  # Any subclass of this class
+
+    def __new__(cls: type[_T_Subclass], name: str) -> _T_Subclass:
+        if not cls._cls_metadata_is_init:
+            cls._cls_metadata_fill_dict()
+            cls._cls_metadata_is_init = True
+        return super(SmartAttributesFPSAutoMetadata, cls).__new__(cls, name)
+
+    @classmethod
+    def _cls_metadata_fill_dict(cls) -> None:
+        if cls._cls_metadata_is_init:
+            raise SmartFPSInitError('Already initialized, should not be here.')
+        annotations = cls._cls_find_annotations()
+
+        cls._DICT_METADATA = {}
+
+        for attr_name, annotation_type in annotations.items():
+            if not annotation_type in cls._ANNOTATION_TYPE_MAPPER:
+                raise SmartFPSInitError(
+                        'Cannot SmartAttributesFPSAutoMetadata with '
+                        f'attribute {attr_name} annotation type {annotation_type}.'
+                )
+
+            cls._DICT_METADATA[attr_name] = (
+                    f'{attr_name}:{annotation_type}',
+                    cls._ANNOTATION_TYPE_MAPPER[annotation_type],
+                    FPS_flags.DEFAULT_INPUT)
+
+    @classmethod
+    def _cls_annotation_technical_keys_to_remove(cls: type[_T_Subclass]
+                                                 ) -> list[str]:
+        return ['_ANNOTATION_TYPE_MAPPER', '_cls_metadata_is_init']
