@@ -48,7 +48,6 @@ def tests_not_installed_inner(session: nox.Session):
     INNER testing, ie we run pytest while PWD is $PYMILK_ROOT (often $HOME/src/pyMilk/)
     ACTUALLY THAT CANNOT WORK, due to uncompiled ImageStreamIO / CacaoProcessTools which gets compiled on install.
     '''
-    import CacaoProcessTools
     ...
 
 
