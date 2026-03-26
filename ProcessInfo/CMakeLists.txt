@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-set(LIBNAME "Fps")
+set(LIBNAME "ProcessInfo")
 message("")
 message(" SRCNAME = ${SRCNAME} -> LIBNAME = ${LIBNAME}")
 
@@ -18,7 +18,7 @@ add_library(${LIBNAME} SHARED ${SOURCES})
 # =======================================
 # cmake -DCMAKE_BUILD_TYPE=Debug
 # option: add -fanalyzer if gcc10+ (warning: this will take a while to run)
-set(CMAKE_C_FLAGS_DEBUG     "-O0 -g -Wall -Wextra -std=gnu17 -Wno-sign-compare -Wl,--no-undefined")
+set(CMAKE_C_FLAGS_DEBUG     "-O0 -g -Wall -Wextra -std=gnu17 -Wno-sign-compare")
 # cmake -DCMAKE_BUILD_TYPE=Coverage
 set(CMAKE_C_FLAGS_COVERAGE     "-O0 -g --coverage -fprofile-arcs -ftest-coverage")
 set(CMAKE_CXX_FLAGS_COVERAGE     "-O0 -g --coverage -fprofile-arcs -ftest-coverage")
@@ -59,6 +59,7 @@ endif()
 
 install(TARGETS ${LIBNAME} EXPORT ${LIBNAME}Targets DESTINATION lib)
 install(FILES
-    fps.h
-    fps_globals.h
+    pinfo_struct.h
+    pinfo_struct_api.h
+    pinfo_exec.h
     DESTINATION include)

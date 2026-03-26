@@ -8,7 +8,6 @@ include(CheckLanguage)
 check_language(CUDA)
 
 if(CMAKE_CUDA_COMPILER)
-	message("YES CUDA.")
 	enable_language(CUDA)
 	set(USE_CUDA ON CACHE BOOL "Build ImageStreamIO with CUDA" FORCE)
 endif()
