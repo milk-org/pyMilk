@@ -15,6 +15,7 @@ The functions below test for editable/non-editable install
 and whether the tests are run from pyMilk dir or externally. This matters due to PYTHONPATH resolution.
 '''
 
+
 @nox.session
 def tests_not_installed_inner(session: nox.Session):
     '''
