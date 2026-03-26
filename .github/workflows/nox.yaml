@@ -26,11 +26,6 @@ jobs:
           python-version: '3.14'
           cache: 'pip'
 
-      - name: Build and cache milk
-        uses: ./.github/actions/setup-milk
-        with:
-          python-version: '3.14'
-
       - name: Install nox
         run: |
           pip install -U pip
