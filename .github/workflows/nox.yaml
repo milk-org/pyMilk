@@ -16,6 +16,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Python
         id: setup-python
@@ -24,7 +26,12 @@ jobs:
           python-version: '3.14'
           cache: 'pip'
 
-      - name: Install pre-commit
+      - name: Build and cache milk
+        uses: ./.github/actions/setup-milk
+        with:
+          python-version: '3.14'
+
+      - name: Install nox
         run: |
           pip install -U pip
           pip install nox

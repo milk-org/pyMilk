@@ -30,14 +30,15 @@ def hack_cacaoprocesstools_from_abspath():
             os.remove(
                     f'/tmp/nox/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so'
             )
+        except FileNotFoundError:
+            ...
+        try:
             os.symlink(
                     f'{os.environ["MILK_INSTALLDIR"]}/python/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so',
                     f'/tmp/nox/CacaoProcessTools.cpython-3{py_ver}-x86_64-linux-gnu.so'
             )
         except FileExistsError:
             ...
-
-    import CacaoProcessTools
 
 
 @nox.session
@@ -47,7 +48,6 @@ def tests_not_installed_inner(session: nox.Session):
     INNER testing, ie we run pytest while PWD is $PYMILK_ROOT (often $HOME/src/pyMilk/)
     ACTUALLY THAT CANNOT WORK, due to uncompiled ImageStreamIO / CacaoProcessTools which gets compiled on install.
     '''
-    import CacaoProcessTools
     ...
 
 

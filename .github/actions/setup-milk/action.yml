@@ -1,0 +1,65 @@
+name: Setup milk
+description: Build and cache the milk-org/milk library with Python module support
+
+inputs:
+  milk-version:
+    description: Git commit, tag, or branch of milk-org/milk to build
+    required: false
+    default: '3c12d7f9e7a88d6a8184161f337d1f71e24b931f'
+  python-version:
+    description: Python version being used (for cache key)
+    required: false
+    default: '3'
+  install-prefix:
+    description: Installation prefix for milk
+    required: false
+    default: '/home/runner/milk'
+
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake pkg-config libcfitsio-dev pybind11-dev python3-pybind11 \
+          libgsl-dev libfftw3-dev libncurses-dev libbison-dev libfl-dev libreadline-dev
+
+    - name: Install pybind11 into pip
+      shell: bash
+      run: |
+          pip install pybind11
+
+    - name: Cache milk install
+      id: cache-milk
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.install-prefix }}
+        key: milk-${{ inputs.milk-version }}-py${{ inputs.python-version }}-${{ runner.os }}
+
+    - name: Build and install milk
+      if: steps.cache-milk.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        git clone --depth 1 --no-single-branch https://github.com/milk-org/milk.git /tmp/milk-build
+        cd /tmp/milk-build
+        git fetch --depth 1 origin ${{ inputs.milk-version }}
+        git checkout FETCH_HEAD
+        git submodule update --init --recursive --depth 1
+        rm -rf plugins/milk-extra-src
+        mkdir _build && cd _build
+        cmake .. \
+          -DCMAKE_INSTALL_PREFIX=${{ inputs.install-prefix }} \
+          -Dbuild_python_module=ON
+        make -j$(nproc)
+        make install
+        rm -rf /tmp/milk-build
+
+    - name: Configure library paths
+      shell: bash
+      run: |
+        echo "${{ inputs.install-prefix }}/lib" | sudo tee /etc/ld.so.conf.d/milk.conf
+        sudo ldconfig
+        echo "MILK_INSTALLDIR=${{ inputs.install-prefix }}"/milk-1.03.00 >> "$GITHUB_ENV"
+        echo "LD_LIBRARY_PATH=${{ inputs.install-prefix }}/milk-1.03.00/lib:${LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+        echo "PATH=${{ inputs.install-prefix }}/milk-1.03.00/bin:${PATH}" >> "$GITHUB_ENV"
