@@ -1,5 +1,7 @@
 # pyMilk
 
+`master` branch is abandonned, please switch to `dev` (for ongoing) or `main` (for releases, but these may be pretty rare).
+
 __Welcome to pyMilk.__
 
 pyMilk means to provide a user-side interaction channel between your python scripts and the interprocess communication (IPC) shared memory structures used in [MILK](https://github.com/milk-org/milk) and it's AO-centric superset [CACAO](https://git@github.com/cacao-org/cacao):
