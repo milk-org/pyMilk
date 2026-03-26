@@ -196,7 +196,7 @@ class SHM:
         self.triDimState = triDim
 
         if data is None:  # Image read
-            if not self._checkExists():
+            if not self._open_from_isio():
                 raise FileNotFoundError(
                         f"Requested SHM {fname} does not exist")
             # _checkExists already performed the self.IMAGE.open()
@@ -216,7 +216,7 @@ class SHM:
 
             data_c = self._init_internals_creation(data_arr)
 
-            if not self._checkExists():
+            if not self._open_from_isio():
                 print(f"{self.FNAME}.im.shm will be created")
             else:
                 print(f"{self.FNAME}.im.shm will be overwritten")
@@ -268,7 +268,8 @@ class SHM:
             return
 
         self.IMAGE.close()
-        if not self._checkExists():  # Perform open
+        if not self._open_from_isio():  # Perform open
+            # unreachable? Since we'd have raise a FileNotFoundError upon os.stat
             raise errors.AutoRelinkError(
                     f"pyMilk @ SHM {self.FNAME}: checkExist")
 
@@ -318,7 +319,7 @@ class SHM:
             data_c = img_shapes.full_cube_encode(data, self.symcode,
                                                  self.triDimState)
         else:
-            raise NotImplementedError()
+            raise ValueError("number of dimensions 1 <= d <= 3")
 
         self.shape_c = data_c.shape
         return data_c
@@ -353,6 +354,9 @@ class SHM:
         Clean close of a SHM data structure link
         """
         self.IMAGE.close()
+
+    def destroy(self):
+        self.IMAGE.destroy()
 
     def read_meta_data(self, verbose: bool = True) -> None:
         '''
@@ -495,6 +499,7 @@ class SHM:
         return self._get_keywords_nofail(comments=comments)
 
     def _get_keywords_nofail(self, comments=False) -> KWDict | KWCommentDict:
+        self._attempt_autorelink_if_needed()
         kws = self.IMAGE.get_kws()
         kws_ret = {}
         for name in kws:
@@ -791,7 +796,7 @@ class SHM:
     # A handy property to access the self.IMAGE keywords from top-level
     keywords = property(lambda x: x.IMAGE.kw, None)
 
-    def _checkExists(self) -> bool:
+    def _open_from_isio(self) -> bool:
         """
         Check if the requeste SHM file is already allocated
         This is called by the constructor when built for writing.
