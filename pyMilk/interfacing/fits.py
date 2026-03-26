@@ -88,7 +88,7 @@ def read_fits_load_shm(file_path: str, shm_name: str, symcode: int = 0,
             np.ndarray), "No can work if file_path contains multiple HDUs"
 
     if create_shm:
-        shm = SHM(shm_name, data, symcode=symcode, triDim=tri_dim, location=0,
+        shm = SHM(shm_name, data, symcode=symcode, triDim=tri_dim, location=-1,
                   shared=1)
     else:
         shm = SHM(shm_name, symcode=symcode, triDim=tri_dim)
