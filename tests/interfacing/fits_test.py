@@ -325,6 +325,7 @@ class TestShmToFits:
 
         # Note: shm data may have symcode applied, so we check shape
         assert result.shape == test_data.shape
+        np.testing.assert_array_almost_equal(result, test_data)
 
         # Cleanup
         shm.close()
