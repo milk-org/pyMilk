@@ -1,4 +1,4 @@
-name: CI
+name: nox
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,6 +16,18 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install pre-commit
+        run: |
+          pip install -U pip
+          pip install nox
 
       - name: nox
         run: nox
