@@ -14,10 +14,12 @@ __pycache__
 # Shared objects & setup.py build
 *.so
 build/
+_build/
 .vscode
 
 # Coverage
 .coverage
+gcov_html/
 
 # Eggs
 .eggs/

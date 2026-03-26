@@ -6,7 +6,8 @@ from pyMilk.util.img_shapes import (
         image_encode, image_decode, cube_front_image_encode,
         cube_front_image_decode, cube_back_image_encode,
         cube_back_image_decode, gen_squeeze_unsqueeze_slices, cube_roll_forw,
-        cube_roll_back, full_cube_encode, full_cube_decode, Which3DState)
+        cube_roll_back, full_cube_encode, full_cube_decode, Which3DState,
+        Which3DRoll)
 
 
 def make_random_array(shape, dtype=np.float32, seed: int | None = None):
@@ -173,3 +174,20 @@ def test_specific_transformations(shape, dtype):
     encoded = image_encode(test_data, 4)
     expected = test_data.T
     np.testing.assert_array_equal(encoded, expected)
+
+
+def test_cube_front_and_back_symmetry():
+    """Test that cube_front and cube_back operations maintain symmetry"""
+    test_data = make_random_array((3, 4, 5))
+
+    # Test all symcodes for front
+    for s in range(8):
+        encoded = cube_front_image_encode(test_data, s)
+        decoded = cube_front_image_decode(encoded, s)
+        np.testing.assert_array_equal(decoded, test_data)
+
+    # Test all symcodes for back
+    for s in range(8):
+        encoded = cube_back_image_encode(test_data, s)
+        decoded = cube_back_image_decode(encoded, s)
+        np.testing.assert_array_equal(decoded, test_data)

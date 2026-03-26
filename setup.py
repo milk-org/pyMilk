@@ -16,10 +16,32 @@ import pathlib
 
 
 class CMakeExtension(Extension):
+    '''
+    This is made to build a sub-project
+    <setup.py's directory>/<folder>
+    with CMake
+
+    Each <folder> becomes its own CMakeExtension and is built with
+    the CMakeBuildExt class
+    '''
 
     def __init__(self, name, package, sourcedir=''):
-        Extension.__init__(self, name, sources=[])
-        self.sourcedir = os.path.abspath(sourcedir) + '/' + self.name
+        Extension.__init__(self, 'pyMilk-cmake', sources=[])
+        self.sourcedir = os.path.abspath(sourcedir)  # + '/' + self.name
+        self.package = package
+
+
+class CMakeSelfExtension(Extension):
+    '''
+    This extension is a singleton approach that calls
+    the parent CMakeLists.txt that is in the same folder than setup.py
+    '''
+
+    def __init__(self, package, sourcedir=''):
+        Extension.__init__(
+                self, 'SELF',
+                sources=[])  # Must avoid name collision with the root package.
+        self.sourcedir = os.path.abspath(sourcedir)
         self.package = package
 
 
@@ -30,7 +52,7 @@ class CMakeBuildExt(build_ext):
         try:
             import pybind11  # Will raise ModuleNotFoundError
             if pybind11.version_info < (2, 11):
-                raise ModuleNotFoundError('pybind version nok')
+                raise ModuleNotFoundError('pybind version must be >= 2.11.')
             out = subprocess.check_output(['cmake', '--version'
                                            ])  # Will raise FileNotFoundError
         except:
@@ -52,6 +74,7 @@ class CMakeBuildExt(build_ext):
         build_temp_subdir = self.build_temp + '/' + ext.name
 
         if self.editable_mode:
+            # When running `pip install -e .`
             # extdir = $HOME/src/pyMilk/
             # drop lib in $HOME/src/pyMilk/pyMilk
             lib_drop_in_directory = extdir + '/' + ext.package
@@ -73,20 +96,14 @@ class CMakeBuildExt(build_ext):
                 '-DPYTHON_EXECUTABLE=' + sys.executable,
         ]
 
-        cfg = 'Debug' if self.debug else 'Release'
+        if os.environ.get('COVERAGE', None) == 'ON':
+            cfg = 'Coverage'
+        else:
+            cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]
 
-        if platform.system() == "Windows":
-            cmake_args += [
-                    '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(
-                            cfg.upper(), extdir)
-            ]
-            if sys.maxsize > 2**32:
-                cmake_args += ['-A', 'x64']
-            build_args += ['--', '/m']
-        else:
-            cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
-            build_args += ['--', '-j%d' % os.cpu_count()]  #, 'VERBOSE=1']
+        cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
+        build_args += ['--', '-j%d' % os.cpu_count()]  #, 'VERBOSE=1']
 
         if "CUDA_ROOT" in os.environ:
             if os.path.isfile('{}/bin/gcc'.format(os.environ["CUDA_ROOT"])):
@@ -103,19 +120,19 @@ class CMakeBuildExt(build_ext):
         else:
             cmake_args += ['-DUSE_CUDA=OFF']
 
+        # Warning, overriden in CMakeLists.txt anyway.
         cmake_args += ['-Dbuild_python_module=ON']
 
         self.announce("Configuring cmake project", level=3)
         command_a = f'cmake {ext.sourcedir} ' + ' '.join(cmake_args)
         command_b = f'cmake --build . ' + ' '.join(build_args)
 
-        # Great way to locate a print-debug quickly in the pip build stack.
-        '''
-        raise ValueError(
-                f'{ext} | {ext.name} | {ext.sourcedir} | command_a = "{command_a}"'
-                f' | command _b = "{command_b}" | cmake cwd = {build_temp_subdir}'
-        )
-        '''
+        # Great way to locate a print-debug quickly when running pip -v
+        #'''
+        print(f'{ext=} \n\t {ext.name=} \n\t {ext.sourcedir} \n\t command_a = "{command_a}"'
+              f' \n\t command _b = "{command_b}" \n\t cmake cwd = {build_temp_subdir}'
+              )
+        #'''
 
         subprocess.check_call(shlex.split(command_a), cwd=build_temp_subdir)
         subprocess.check_call(shlex.split(command_b), cwd=build_temp_subdir)
@@ -127,10 +144,11 @@ with open("README.md", 'r') as f:
 #import sys
 #raise ValueError(sys.argv)
 
+PACKAGE_PYMILK = 'pyMilk'
 setup(
-        packages=['pyMilk'],  # same as name
+        packages=[PACKAGE_PYMILK],  # same as name
         ext_modules=[
-                CMakeExtension('ImageStreamIO', package='pyMilk'),
+                CMakeSelfExtension(package=PACKAGE_PYMILK),
         ],
         cmdclass=dict(build_ext=CMakeBuildExt),
         long_description=long_description)

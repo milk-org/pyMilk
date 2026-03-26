@@ -1,4 +1,4 @@
 [submodule "ImageStreamIO"]
 	path = ImageStreamIO
 	url = ../ImageStreamIO
-	branch = dev
+	branch = pyMilk

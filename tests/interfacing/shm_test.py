@@ -5,6 +5,7 @@ import os
 import numpy as np
 
 from pyMilk.interfacing.shm import SHM
+from pyMilk import errors
 
 
 def test_data_conservation():
@@ -33,11 +34,11 @@ def test_data_conservation():
 
                 shm_read.set_data(data_backw)
                 dd2 = shm_write.get_data(check=False)
-                assert np.all(
-                        np.abs(dd2 - data_backw) < 1e-7), f"{s}, {sym}, {tri}"
+                assert np.all(np.abs(dd2 - data_backw) < 1e-7), \
+                                        f"{s}, {sym}, {tri}"
 
                 shm_read.close()
-                shm_write.IMAGE.destroy()
+                shm_write.destroy()
 
 
 def test_keyword():
@@ -64,7 +65,7 @@ def test_keyword():
     assert shm_read.get_keywords(True)['roger'] == ('12', '')
     assert shm_read.get_keywords(True)['yo'] == (13, 'comment')
 
-    shm_write.IMAGE.destroy()
+    shm_write.destroy()
 
 
 def test_fits():
@@ -93,7 +94,7 @@ def test_fits():
         assert isinstance(data_f2, np.ndarray)
         assert isinstance(data_f3, np.ndarray)
 
-        shm_write.IMAGE.destroy()
+        shm_write.destroy()
         os.remove('pyMilk_test_fits.fits')
         os.remove('pyMilk_test_fits2.fits')
         os.remove('pyMilk_test_fits3.fits')
@@ -105,3 +106,77 @@ def test_fits():
         assert np.all(np.abs(data - data_f) < 1e-7)
         assert np.all(np.abs(data - data_f2) < 1e-7)
         assert np.all(np.abs(data - data_f3) < 1e-7)
+
+
+def test_link_no_exist():
+    with pytest.raises(FileNotFoundError):
+        s = SHM('test_noexist')
+
+
+@pytest.mark.parametrize('data', [
+        'abcd',
+        ('abcd', np.int32),
+        ((1, 1, 1), 'yolo'),
+        ((1, 2, 3, 4), np.float64),
+        ((-1, 2, 3), np.float64),
+        ((1.123, 2, 3), np.float64),
+])
+def test_create_bad_data(data):
+    with pytest.raises((ValueError, TypeError)):
+        s = SHM('a_name', data)
+
+
+@pytest.mark.parametrize('data', [
+        ((1, ), np.int8),
+        ((1, 1), np.int16),
+        ((1, 1, 1), np.int32),
+        ((1, 2, 3), np.int64),
+        ((2, 1, 3), np.uint8),
+        ((2, 3, 1), np.uint16),
+        ((10, ), np.uint32),
+        ((10, 20), np.uint64),
+        ((10, 20, 30), np.float32),
+])
+def test_create_good_data_tuple(data):
+    shape, dtype = data
+    s = SHM('a_name', data, symcode=0, autoSqueeze=False)
+
+    got_data = s.get_data()
+    assert s.shape == s.shape_c
+    assert s.shape == shape
+
+    assert isinstance(got_data, np.ndarray)
+    assert got_data.dtype == s.nptype
+    assert got_data.dtype == dtype
+
+    s.destroy()
+
+
+def test_failing_autorelink():
+    from pyMilk import errors as perr
+
+    a = SHM('x_autorelink', ((2, 3), np.int32))
+
+    b = SHM('x_autorelink', ((5, 3, 4), np.int32))
+    with pytest.raises(perr.AutoRelinkSizeError):
+        data = a.get_data()
+
+    b = SHM('x_autorelink', ((2, 3), np.float32))
+    with pytest.raises(perr.AutoRelinkTypeError):
+        data = a.get_data()
+
+    b = SHM('x_autorelink', ((2, 3), np.int32))
+    a.get_data()
+
+
+def test_copy_false():
+    a = SHM('x_copyfalse', ((20, 30), np.int32))
+
+    b = SHM('x_copyfalse')
+    arr = b.get_data(copy=False)
+
+    np.testing.assert_array_equal(arr, np.zeros((20, 30), np.int32))
+    arr[1, 2] = 2
+
+    arr2 = a.get_data(copy=True)
+    np.testing.assert_array_equal(arr, arr2)
