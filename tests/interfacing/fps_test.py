@@ -65,6 +65,24 @@ def test_smart_fps_instantiation():
     assert g.gain == pytest.approx(3.1415)
 
 
+def test_smart_fps_find_annotations_cannot_be_overridden():
+
+    class H(fps.SmartAttributesFPS):
+        gain: float
+        _DICT_METADATA = {
+                'gain': ('gain', fps.FPS_type.FLOAT32,
+                         fps.FPS_flags.DEFAULT_INPUT)
+        }
+
+        @classmethod
+        def _cls_find_annotations(cls):
+            return {'gain': float}
+
+    with pytest.raises(fps.SmartFPSInitError,
+                       match='overrides _cls_find_annotations'):
+        H.create('some_name')
+
+
 @pytest.fixture
 def fixt_dumb_fps():
     with pytest.raises(fps.FPSDoesntExistError):
@@ -236,3 +254,26 @@ def test_fps_filesystem_operations():
     # Verify FPS was properly destroyed
     with pytest.raises(fps.FPSDoesntExistError):
         fps.FPS(fps_name)
+
+
+def test_smart_fps_auto():
+
+    class NewFPS(fps.SmartAttributesFPSAutoMetadata):
+        gain: float
+        counter: int
+        name_of_something: str
+
+    f = NewFPS.create('a_name')
+
+    f2 = NewFPS('a_name')
+    f2.gain = 3.1415
+    f2.counter = 100
+    f2.name_of_something = 'YOLO'
+
+    assert f.gain == 3.1415
+    assert f.counter == 100
+    assert f.name_of_something == 'YOLO'
+
+    # TODO breakpoint() here and figure out the interaction with milk-fpsCTRL.
+
+    f.destroy()
