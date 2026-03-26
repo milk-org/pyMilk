@@ -48,7 +48,7 @@ def tests_editable_inner_outer(session: nox.Session):
     project_dir = os.path.abspath(os.getcwd())
     session.chdir('/tmp')
     with session.chdir(session.create_tmp()):
-        session.run("pytest")
+        session.run("pytest", project_dir)
 
 
 @nox.session
