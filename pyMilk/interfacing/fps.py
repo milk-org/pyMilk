@@ -79,7 +79,7 @@ class FPS:
                       True)  # thrown away, opened as "read" in constructor
 
         fps = cls(name)
-        fps.add_param('Name', 'Name', FPS_type.STRING,
+        fps.add_param('Name', 'NameComment', FPS_type.STRING,
                       FPS_flags.DEFAULT_STATUS)  # 0x5 = VISIBLE | ACTIVE
         fps['Name'] = name
 

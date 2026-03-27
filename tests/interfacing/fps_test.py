@@ -95,6 +95,16 @@ def fixt_dumb_fps():
     a.destroy()
 
 
+def test_pass_data(fixt_dumb_fps):
+    a = fixt_dumb_fps
+    a.add_param('abc', 'abcComment', fps.FPS_type.INT32,
+                fps.FPS_flags.DEFAULT_INPUT)
+    a['abc'] = 1
+
+    b = fps.FPS(a.name)
+    assert b['abc'] == 1
+
+
 @pytest.fixture
 def fixt_smart_fps_properties():
 
@@ -129,7 +139,7 @@ def fixt_smart_fps_properties():
     a.destroy()
 
 
-def test_downcasting(fixt_smart_fps_properties):
+def test_smart_to_dumb(fixt_smart_fps_properties):
     a = fixt_smart_fps_properties
     a.i4 = 12345
 
@@ -138,6 +148,13 @@ def test_downcasting(fixt_smart_fps_properties):
         _ = f.i4
 
     assert f['i4'] == 12345
+
+
+def test_downcasting(fixt_smart_fps_properties):
+    a = fixt_smart_fps_properties
+    a.i4 = 12345
+
+    f = fps.FPS(a.name)
 
     f_as_a = type(a).smartfps_downcast(f)
     assert f_as_a.i4 == 12345
@@ -194,13 +211,18 @@ def test_smart_fps_type_validation(fixt_smart_fps_properties):
     fps = fixt_smart_fps_properties
 
     # Test invalid type assignments
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         fps.i4 = "not integer-able"
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         fps.f4 = "not float-able"
-
+    ''' That worked with pybind, it had more
+    autocasting...
     fps.s = 42
     assert fps.s == '42'  # 'Dis JS or what?
+    '''
+    # Nanobind is less friendly:
+    with pytest.raises(RuntimeError):
+        fps.s = 42
 
 
 def test_smart_fps_concurrent_access():

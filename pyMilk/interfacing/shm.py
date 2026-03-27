@@ -281,7 +281,7 @@ class SHM:
                     f" size mismatch {self.shape_c} vs. {tuple(self.IMAGE.md.size)}"
             )
 
-        new_dtype = np.array(self.IMAGE).dtype
+        new_dtype = self.IMAGE.view().dtype
         if new_dtype != self.nptype:
             raise errors.AutoRelinkTypeError(
                     f"pyMilk @ SHM {self.FNAME}: Error during autorelink --"
@@ -611,10 +611,8 @@ class SHM:
             self._attempt_autorelink_if_needed()
 
         if check:
+            self._checkGrabSemaphore()
             if checkSemAndFlush:
-                # For irregular operations - we want to bypass this in multi_recv_data
-                # Check, flush, and wait the semaphore
-                self._checkGrabSemaphore()
                 self.IMAGE.semflush(self.semID)
             if timeout is None or timeout <= 0:
                 self.IMAGE.semwait(self.semID)
@@ -628,12 +626,12 @@ class SHM:
 
         if self.location >= 0:
             if copy:
+                arr_sliced = self.IMAGE.copy()[self.readSlice]
                 if self.nDim == 2:
-                    return img_shapes.image_decode(
-                            self.IMAGE.copy()[self.readSlice], self.symcode)
+                    return img_shapes.image_decode(arr_sliced, self.symcode)
                 elif self.nDim == 3:
                     return img_shapes.full_cube_decode(
-                            self.IMAGE.copy()[self.readSlice],
+                            arr_sliced,
                             self.symcode,
                             self.triDimState,
                     )
@@ -643,18 +641,17 @@ class SHM:
                 raise AssertionError("copy=False not allowed on GPU.")
         else:
             # This syntax is only allowed on CPU - segfaults if loc > 0
+            arr_sliced = self.IMAGE.copy() if copy else self.IMAGE.view()
             if self.nDim == 2:
-                return img_shapes.image_decode(
-                        np.array(self.IMAGE, copy=copy)[self.readSlice],
-                        self.symcode)
+                return img_shapes.image_decode(arr_sliced, self.symcode)
             elif self.nDim == 3:
                 return img_shapes.full_cube_decode(
-                        np.array(self.IMAGE, copy=copy)[self.readSlice],
+                        arr_sliced,
                         self.symcode,
                         self.triDimState,
                 )
             else:
-                return np.array(self.IMAGE, copy=copy)[self.readSlice]
+                return arr_sliced
 
     def set_data(self, data: np.ndarray, check_dt: bool = False,
                  autorelink_if_need: bool = False) -> None:

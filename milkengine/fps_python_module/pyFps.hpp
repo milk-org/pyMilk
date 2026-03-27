@@ -82,8 +82,7 @@ class pyFps
     int read_keys()
     {
         int k = 0;
-        while((k < fps_.md->NBparamMAX) &&
-                (fps_.parray[k].keywordfull[0] != '\0'))
+        while((k < fps_.md->NBparamMAX) && (fps_.parray[k].keywordfull[0] != '\0'))
         {
             int offset = strlen(fps_.parray[k].keyword[0]) + 1;
             char *key = fps_.parray[k].keywordfull + offset;
@@ -224,14 +223,14 @@ class pyFps
      * @return int
      */
     int add_entry(std::string entry_name, std::string entry_desc,
-                  uint32_t fptype)
+                  FPS_type fptype)
     {
-        keys_[entry_name] = static_cast<FPS_type>(fptype);
+        keys_[entry_name] = fptype;
         // We need to prepend a . to entry to abide by FPS conventions
         // See fps_add_entry.c
         std::string prepended = "." + entry_name;
         return function_parameter_add_entry(&fps_, prepended.c_str(),
-                                            entry_desc.c_str(), fptype,
+                                            entry_desc.c_str(), static_cast<uint32_t>(fptype),
                                             FPFLAG_DEFAULT_INPUT, nullptr, nullptr);
     }
 
@@ -247,13 +246,13 @@ class pyFps
      * @return int
      */
     int add_entry_w_flags(std::string entry_name, std::string entry_desc,
-                          uint32_t fptype, uint64_t fpflag)
+                          FPS_type fptype, FPS_flags fpflag)
     {
-        keys_[entry_name] = static_cast<FPS_type>(fptype);
+        keys_[entry_name] = fptype;
         std::string prepended = "." + entry_name;
         return function_parameter_add_entry(&fps_, prepended.c_str(),
-                                            entry_desc.c_str(), fptype,
-                                            fpflag, nullptr, nullptr);
+                                            entry_desc.c_str(), static_cast<uint32_t>(fptype),
+                                            static_cast<uint64_t>(fpflag), nullptr, nullptr);
     }
 
     /**
