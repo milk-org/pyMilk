@@ -611,10 +611,8 @@ class SHM:
             self._attempt_autorelink_if_needed()
 
         if check:
+            self._checkGrabSemaphore()
             if checkSemAndFlush:
-                # For irregular operations - we want to bypass this in multi_recv_data
-                # Check, flush, and wait the semaphore
-                self._checkGrabSemaphore()
                 self.IMAGE.semflush(self.semID)
             if timeout is None or timeout <= 0:
                 self.IMAGE.semwait(self.semID)
