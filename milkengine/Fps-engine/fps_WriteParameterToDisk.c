@@ -2,7 +2,7 @@
  * @file fps_WriteParameterToDisk.c
  *
  */
-#include "ImageStreamIO/timeutils.h"
+#include "ProcessInfo-engine/timeutils.h"
 
 #include <sys/syscall.h> // needed for tid = syscall(SYS_gettid);
 #include <unistd.h>

@@ -21,8 +21,8 @@
 // #include "processinfo_procdirname.h"
 // I should include them here too if available in include path.
 
-#include "ProcessInfo-engine/processinfo_shm_link.h"
-#include "ProcessInfo-engine/processinfo_procdirname.h"
+#include "processinfo_shm_link.h"
+#include "processinfo_procdirname.h"
 
 errno_t functionparameter_FPS_processinfo_signal(const char *fps_name, int signal_val) {
     char procdname[STRINGMAXLEN_DIR_NAME];

@@ -2,8 +2,8 @@
 #define FPS_GLOBALS_H
 
 #include <time.h>
-#include "fps.h"
 #include "ImageStreamIO/milkDebugTools.h"
+#include "fps.h"
 
 /** @brief Current system timestamp, used for FPS synchronization. */
 extern long FPS_TIMESTAMP;

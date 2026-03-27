@@ -10,7 +10,7 @@
 #include "fps.h"
 #include "fps_internal.h"
 
-#include "ImageStreamIO/timeutils.h"
+#include "ProcessInfo-engine/timeutils.h"
 
 #include "fps_GetParamIndex.h"
 #include "fps_WriteParameterToDisk.h"

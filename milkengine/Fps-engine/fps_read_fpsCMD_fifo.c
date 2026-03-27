@@ -10,7 +10,7 @@
 #include "fps.h"
 #include "fps_internal.h"
 #include "fps_globals.h"
-#include "ImageStreamIO/timeutils.h"
+#include "ProcessInfo-engine/timeutils.h"
 
 // fill up task list from fifo submissions
 //
