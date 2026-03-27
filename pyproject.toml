@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=58", "wheel", 'pybind11>=2.11', 'cmake']
+requires = ["setuptools>=58", "wheel", 'nanobind', 'cmake']
 
 [project]
 authors = [

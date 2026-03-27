@@ -50,17 +50,14 @@ class CMakeBuildExt(build_ext):
     def run(self):
         self.inplace = True
         try:
-            import pybind11  # Will raise ModuleNotFoundError
-            if pybind11.version_info < (2, 11):
-                raise ModuleNotFoundError('pybind version must be >= 2.11.')
+            import nanobind  # Will raise ModuleNotFoundError
             out = subprocess.check_output(['cmake', '--version'
                                            ])  # Will raise FileNotFoundError
         except:
             raise RuntimeError(
-                    "CMake and pybind11 must be installed to build the following extensions: "
+                    "CMake and nanobind must be installed to build the following extensions: "
                     + ", ".join(e.name for e in self.extensions) +
-                    "\n and pybind must be > 2.11 (pip install --upgrade pybind11)"
-            )
+                    "\n (pip install nanobind)")
 
         for ext in self.extensions:
             self.build_extension(ext)
@@ -149,7 +146,8 @@ PACKAGE_LIBS = 'milkengine'
 setup(
         packages=[PACKAGE_LIBS],  # same as name
         ext_modules=[
-                CMakeExtension(PACKAGE_LIBS, PACKAGE_PYMILK, sourcedir=PACKAGE_LIBS),
+                CMakeExtension(PACKAGE_LIBS, PACKAGE_PYMILK,
+                               sourcedir=PACKAGE_LIBS),
         ],
         cmdclass=dict(build_ext=CMakeBuildExt),
         long_description=long_description)

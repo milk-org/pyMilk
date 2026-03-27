@@ -2,6 +2,8 @@
 #define PYFPS_H
 
 #include <iostream>
+#include <vector> // std::vector
+#include <algorithm> // std::find
 
 extern "C"
 {

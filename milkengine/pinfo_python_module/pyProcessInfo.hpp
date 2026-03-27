@@ -31,7 +31,7 @@ class pyProcessInfo
     *                 - 2: increment single step (will go back to 1)
     *                 - 3: exit loop
     */
-    pyProcessInfo(char *pname, int CTRLval)
+    pyProcessInfo(const char *pname, int CTRLval)
     {
         create(pname, CTRLval);
     }
@@ -68,7 +68,7 @@ class pyProcessInfo
     *                 - 3: exit loop
     * @return int : error code
     */
-    int create(char *pname, int CTRLval)
+    int create(const char *pname, int CTRLval)
     {
         // if (m_pinfo != nullptr) {
         //   processinfo_cleanExit(m_pinfo);
@@ -92,7 +92,7 @@ class pyProcessInfo
     * @param pname : name of the Process Info object (human-readable)
     * @return int : error code
     */
-    int link(char *pname)
+    int link(const char *pname)
     {
         m_pinfo = processinfo_shm_link(pname, &m_fd);
         return EXIT_SUCCESS;
@@ -104,7 +104,7 @@ class pyProcessInfo
     * @param pname : name of the Process Info object (human-readable)
     * @return int : error code
     */
-    int close(char *pname)
+    int close(const char *pname)
     {
         processinfo_shm_close(m_pinfo, m_fd);
         return EXIT_SUCCESS;

@@ -1,6 +1,7 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/map.h>
 
 #include <string>
 #include <cstring>
@@ -11,24 +12,24 @@
 
 #include "pyProcessInfo.hpp"
 
-namespace py = pybind11;
-using namespace pybind11::literals;
+namespace nb = nanobind;
+using namespace nanobind::literals;
 
-PYBIND11_MODULE(ProcessInfoWrap, m)
+NB_MODULE(ProcessInfoWrap, m)
 {
     m.doc() = "ProcessInfoWrap library module";
 
-    py::class_<timespec>(m, "timespec")
-        .def(py::init<time_t, long>())
-        .def_readwrite("tv_sec", &timespec::tv_sec)
-        .def_readwrite("tv_nsec", &timespec::tv_nsec);
+    nb::class_<timespec>(m, "timespec")
+        .def(nb::init<time_t, long>())
+        .def_rw("tv_sec", &timespec::tv_sec)
+        .def_rw("tv_nsec", &timespec::tv_nsec);
 
-    py::class_<pyProcessInfo>(m, "processinfo")
-        .def(py::init<>(),
+    nb::class_<pyProcessInfo>(m, "processinfo")
+        .def(nb::init<>(),
              R"pbdoc(Construct a empty Process Info object
 )pbdoc")
 
-        .def(py::init<char *, int>(),
+        .def(nb::init<const char *, int>(),
              R"pbdoc(Construct a new Process Info object
 
 Parameters:
@@ -39,8 +40,8 @@ Parameters:
              - 2: increment single step (will go back to 1)
              - 3: exit loop
 )pbdoc",
-             py::arg("name"),
-             py::arg("CTRLval"))
+             nb::arg("name"),
+             nb::arg("CTRLval"))
 
         .def("create",
              &pyProcessInfo::create,
@@ -56,8 +57,8 @@ Parameters:
 Return:
     ret : error code
 )pbdoc",
-             py::arg("name"),
-             py::arg("CTRLval"))
+             nb::arg("name"),
+             nb::arg("CTRLval"))
 
         .def("link",
              &pyProcessInfo::link,
@@ -68,7 +69,7 @@ Parameters:
 Return:
     ret : error code
 )pbdoc",
-             py::arg("name"))
+             nb::arg("name"))
 
         .def("close",
              &pyProcessInfo::close,
@@ -79,7 +80,7 @@ Parameters:
 Return:
     ret : error code
 )pbdoc",
-             py::arg("name"))
+             nb::arg("name"))
 
         .def("sigexit",
              &pyProcessInfo::sigexit,
@@ -88,7 +89,7 @@ Return:
 Parameters:
     sig : signal to send
 )pbdoc",
-             py::arg("sig"))
+             nb::arg("sig"))
 
         .def("writeMessage",
              &pyProcessInfo::writeMessage,
@@ -99,7 +100,7 @@ Parameters:
 Return:
     ret : error code
 )pbdoc",
-             py::arg("message"))
+             nb::arg("message"))
 
         .def("exec_start",
              &pyProcessInfo::exec_start,
@@ -117,7 +118,7 @@ Return:
     ret : error code
 )pbdoc")
 
-        .def_property(
+        .def_prop_rw(
             "name",
             [](pyProcessInfo &p) {
                 return std::string(p->name);
@@ -127,7 +128,7 @@ Return:
             },
             "Name of the Process Info object")
 
-        .def_property(
+        .def_prop_rw(
             "source_FUNCTION",
             [](pyProcessInfo &p) {
                 return std::string(p->source_FUNCTION);
@@ -138,7 +139,7 @@ Return:
                         sizeof(p->source_FUNCTION));
             })
 
-        .def_property(
+        .def_prop_rw(
             "source_FILE",
             [](pyProcessInfo &p) {
                 return std::string(p->source_FILE);
@@ -148,7 +149,7 @@ Return:
                         source_FILE.c_str(),
                         sizeof(p->source_FILE));
             })
-        .def_property(
+        .def_prop_rw(
             "source_LINE",
             [](pyProcessInfo &p) {
                 return p->source_LINE;
@@ -156,7 +157,7 @@ Return:
             [](pyProcessInfo &p, int source_LINE) {
                 p->source_LINE = source_LINE;
             })
-        .def_property(
+        .def_prop_rw(
             "PID",
             [](pyProcessInfo &p) {
                 return p->PID;
@@ -165,7 +166,7 @@ Return:
                 p->PID = PID;
             })
 
-        .def_property(
+        .def_prop_rw(
             "createtime",
             [](pyProcessInfo &p) {
                 return p->createtime;
@@ -173,7 +174,7 @@ Return:
             [](pyProcessInfo &p, timespec createtime) {
                 p->createtime = createtime;
             })
-        .def_property(
+        .def_prop_rw(
             "loopcnt",
             [](pyProcessInfo &p) {
                 return p->loopcnt;
@@ -181,7 +182,7 @@ Return:
             [](pyProcessInfo &p, int loopcnt) {
                 p->loopcnt = loopcnt;
             })
-        .def_property(
+        .def_prop_rw(
             "CTRLval",
             [](pyProcessInfo &p) {
                 return p->CTRLval;
@@ -189,7 +190,7 @@ Return:
             [](pyProcessInfo &p, int CTRLval) {
                 p->CTRLval = CTRLval;
             })
-        .def_property(
+        .def_prop_rw(
             "tmuxname",
             [](pyProcessInfo &p) {
                 return std::string(p->tmuxname);
@@ -197,7 +198,7 @@ Return:
             [](pyProcessInfo &p, std::string name) {
                 strncpy(p->tmuxname, name.c_str(), sizeof(p->tmuxname));
             })
-        .def_property(
+        .def_prop_rw(
             "loopstat",
             [](pyProcessInfo &p) {
                 return p->loopstat;
@@ -205,7 +206,7 @@ Return:
             [](pyProcessInfo &p, int loopstat) {
                 p->loopstat = loopstat;
             })
-        .def_property(
+        .def_prop_rw(
             "statusmsg",
             [](pyProcessInfo &p) {
                 return std::string(p->statusmsg);
@@ -213,7 +214,7 @@ Return:
             [](pyProcessInfo &p, std::string name) {
                 strncpy(p->statusmsg, name.c_str(), sizeof(p->statusmsg));
             })
-        .def_property(
+        .def_prop_rw(
             "statuscode",
             [](pyProcessInfo &p) {
                 return p->statuscode;
@@ -222,7 +223,7 @@ Return:
                 p->statuscode = statuscode;
             })
         // .def_readwrite("logFile", &pyProcessInfo::m_pinfo::logFile)
-        .def_property(
+        .def_prop_rw(
             "description",
             [](pyProcessInfo &p) {
                 return std::string(p->description);

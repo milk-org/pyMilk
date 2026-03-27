@@ -1,17 +1,19 @@
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/map.h>
+#include <nanobind/stl/pair.h>
 
 #include "pyFps.hpp"
 
-namespace py = pybind11;
-using namespace pybind11::literals;
+namespace nb = nanobind;
+using namespace nanobind::literals;
 
 
 int fps_value_to_key(pyFps             &cls,
                      const std::string &key,
                      const FPS_type     fps_type,
-                     py::object         value)
+                     nb::object         value)
 {
     FPS_type switch_fps_type = fps_type == FPS_type::AUTO ? cls.keys(
                                    key) : fps_type;
@@ -20,20 +22,20 @@ int fps_value_to_key(pyFps             &cls,
     {
     case FPS_type::ONOFF:
         return functionparameter_SetParamValue_ONOFF(cls, key.c_str(),
-                py::bool_(value));
+                nb::cast<bool>(value));
     case FPS_type::INT32:
     case FPS_type::UINT32:
     case FPS_type::INT64:
-        return functionparameter_SetParamValue_INT64(cls, key.c_str(), py::int_(value));
+        return functionparameter_SetParamValue_INT64(cls, key.c_str(), nb::cast<int64_t>(value));
     case FPS_type::UINT64:
         return functionparameter_SetParamValue_UINT64(cls, key.c_str(),
-                py::int_(value));
+                nb::cast<uint64_t>(value));
     case FPS_type::FLOAT32:
         return functionparameter_SetParamValue_FLOAT32(cls, key.c_str(),
-                py::float_(value));
+                nb::cast<float>(value));
     case FPS_type::FLOAT64:
         return functionparameter_SetParamValue_FLOAT64(cls, key.c_str(),
-                py::float_(value));
+                nb::cast<double>(value));
     case FPS_type::STRING:
     case FPS_type::STREAMNAME:
     case FPS_type::DIRNAME:
@@ -43,35 +45,35 @@ int fps_value_to_key(pyFps             &cls,
         return functionparameter_SetParamValue_STRING(
                    cls,
                    key.c_str(),
-                   std::string(py::str(value)).c_str());
+                   nb::cast<std::string>(value).c_str());
     case FPS_type::TIMESPEC:
         return functionparameter_SetParamValue_TIMESPEC(cls, key.c_str(),
-                py::float_(value));
+                nb::cast<double>(value));
     default:
         return EXIT_FAILURE;
     }
 }
 
-py::object
+nb::object
 fps_value_from_key(pyFps &cls, const std::string &key, const FPS_type fps_type)
 {
     switch(fps_type)
     {
     case FPS_type::ONOFF:
-        return py::bool_(functionparameter_GetParamValue_ONOFF(cls, key.c_str()));
+        return nb::bool_(functionparameter_GetParamValue_ONOFF(cls, key.c_str()));
     case FPS_type::INT32:
     case FPS_type::UINT32:
     case FPS_type::INT64:
-        return py::int_(
+        return nb::int_(
                    functionparameter_GetParamValue_INT64(cls, key.c_str()));
     case FPS_type::UINT64:
-        return py::int_(
+        return nb::int_(
                    functionparameter_GetParamValue_UINT64(cls, key.c_str()));
     case FPS_type::FLOAT32:
-        return py::float_(
+        return nb::float_(
                    functionparameter_GetParamValue_FLOAT32(cls, key.c_str()));
     case FPS_type::FLOAT64:
-        return py::float_(
+        return nb::float_(
                    functionparameter_GetParamValue_FLOAT64(cls, key.c_str()));
     case FPS_type::STRING:
     case FPS_type::STREAMNAME:
@@ -79,30 +81,30 @@ fps_value_from_key(pyFps &cls, const std::string &key, const FPS_type fps_type)
     case FPS_type::EXECFILENAME:
     case FPS_type::FILENAME:
     case FPS_type::FITSFILENAME:
-        return py::str(functionparameter_GetParamPtr_STRING(cls, key.c_str()));
+        return nb::str(functionparameter_GetParamPtr_STRING(cls, key.c_str()));
     case FPS_type::TIMESPEC:
-        return py::float_(functionparameter_GetParamValue_TIMESPEC(cls, key.c_str()));
+        return nb::float_(functionparameter_GetParamValue_TIMESPEC(cls, key.c_str()));
     default:
-        return py::none();
+        return nb::none();
     }
 }
 
-py::dict fps_to_dict(pyFps &cls)
+nb::dict fps_to_dict(pyFps &cls)
 {
-    py::dict fps_dict;
+    nb::dict fps_dict;
     for(auto &key : cls.keys())
     {
-        fps_dict[py::str(key.first)] =
+        fps_dict[nb::str(key.first.c_str())] =
             fps_value_from_key(cls, key.first, key.second);
     }
     return fps_dict;
 }
 
-PYBIND11_MODULE(FpsWrap, m)
+NB_MODULE(FpsWrap, m)
 {
     m.doc() = "FpsWrap library module";
 
-    py::enum_<FPS_status>(m, "FPS_status")
+    nb::enum_<FPS_status>(m, "FPS_status")
         .value("CONF", FPS_status::CONF)
         .value("RUN", FPS_status::RUN)
         .value("CMDCONF", FPS_status::CMDCONF)
@@ -114,7 +116,7 @@ PYBIND11_MODULE(FpsWrap, m)
         .value("TMUXCTRL", FPS_status::TMUXCTRL)
         .export_values();
 
-    py::enum_<FPS_type>(m, "FPS_type")
+    nb::enum_<FPS_type>(m, "FPS_type")
         .value("AUTO", FPS_type::AUTO)
         .value("UNDEF", FPS_type::UNDEF)
         .value("INT32", FPS_type::INT32)
@@ -136,7 +138,7 @@ PYBIND11_MODULE(FpsWrap, m)
         .value("FPSNAME", FPS_type::FPSNAME)
         .export_values();
 
-    py::enum_<FPS_flags>(m, "FPS_flags")
+    nb::enum_<FPS_flags>(m, "FPS_flags")
 	.value("DEFAULT_INPUT", FPS_flags::DEFAULT_INPUT)
 	.value("DEFAULT_OUTPUT", FPS_flags::DEFAULT_OUTPUT)
 	.value("DEFAULT_INPUT_STREAM", FPS_flags::DEFAULT_INPUT_STREAM)
@@ -145,31 +147,31 @@ PYBIND11_MODULE(FpsWrap, m)
 	.export_values();
 
 
-    py::class_<timespec>(m, "timespec")
-        .def(py::init<time_t, long>())
-        .def_readwrite("tv_sec", &timespec::tv_sec)
-        .def_readwrite("tv_nsec", &timespec::tv_nsec);
+    nb::class_<timespec>(m, "timespec")
+        .def(nb::init<time_t, long>())
+        .def_rw("tv_sec", &timespec::tv_sec)
+        .def_rw("tv_nsec", &timespec::tv_nsec);
 
-    py::class_<pyFps>(m, "fps")
+    nb::class_<pyFps>(m, "fps")
         // read-only constructor
-        .def(py::init<std::string>(),
+        .def(nb::init<std::string>(),
              R"pbdoc(Read / connect to existing shared memory FPS
 Parameters:
     name     [in]:  the name of the shared memory file to connect
 )pbdoc",
-             py::arg("name"))
+             nb::arg("name"))
 
         // read/write constructor
-        .def(py::init<std::string, bool, int>(),
+        .def(nb::init<std::string, bool, int>(),
              R"pbdoc(Read / connect to existing shared memory FPS
 Parameters:
     name     [in]:  the name of the shared memory file to connect
     create   [in]:  flag for creating of shared memory identifier
     NBparamMAX   [in]:  Max number of parameters
 )pbdoc",
-             py::arg("name"),
-             py::arg("create"),
-             py::arg("NBparamMAX") = FUNCTION_PARAMETER_NBPARAM_DEFAULT)
+             nb::arg("name"),
+             nb::arg("create"),
+             nb::arg("NBparamMAX") = FUNCTION_PARAMETER_NBPARAM_DEFAULT)
 
         .def("asdict", &fps_to_dict)
 
@@ -179,11 +181,11 @@ Parameters:
              })
 
         .def("__setitem__",
-             [](pyFps &cls, const std::string &key, py::object value) {
+             [](pyFps &cls, const std::string &key, nb::object value) {
                  return fps_value_to_key(cls, key, cls.keys(key), value);
              })
 
-        .def("md", &pyFps::md, py::return_value_policy::reference)
+        .def("md", &pyFps::md, nb::rv_policy::reference)
 
         .def("add_entry",
              &pyFps::add_entry,
@@ -196,9 +198,9 @@ Parameters:
     comment  [in]:  description
     fptype   [in]:  datatype
 )pbdoc",
-             py::arg("entry_name"),
-             py::arg("entry_desc"),
-             py::arg("fptype"))
+             nb::arg("entry_name"),
+             nb::arg("entry_desc"),
+             nb::arg("fptype"))
 
 	    .def("add_entry",
              &pyFps::add_entry_w_flags,
@@ -212,10 +214,10 @@ Parameters:
     fptype   [in]:  datatype
     fpflag   [in]:  fps flags
 )pbdoc",
-             py::arg("entry_name"),
-             py::arg("entry_desc"),
-             py::arg("fptype"),
-	         py::arg("fpflag"))
+             nb::arg("entry_name"),
+             nb::arg("entry_desc"),
+             nb::arg("fptype"),
+	         nb::arg("fpflag"))
 
         .def("get_status", &pyFps::get_status)
         .def("set_status", &pyFps::set_status)
@@ -235,7 +237,7 @@ Parameters:
 Return:
     ret      [out]: parameter value
 )pbdoc",
-            py::arg("key"))
+            nb::arg("key"))
 
         .def(
             "get_param_value_int",
@@ -249,7 +251,7 @@ Parameters:
 Return:
     ret      [out]: parameter value
 )pbdoc",
-            py::arg("key"))
+            nb::arg("key"))
 
         .def(
             "get_param_value_float",
@@ -264,7 +266,7 @@ Parameters:
 Return:
     ret      [out]: parameter value
 )pbdoc",
-            py::arg("key"))
+            nb::arg("key"))
         .def(
             "get_param_value_double",
             [](pyFps &cls, std::string key) {
@@ -278,7 +280,7 @@ Parameters:
 Return:
     ret      [out]: parameter value
 )pbdoc",
-            py::arg("key"))
+            nb::arg("key"))
         .def(
             "get_param_value_string",
             [](pyFps &cls, std::string key) {
@@ -292,7 +294,7 @@ Parameters:
 Return:
     ret      [out]: parameter value
 )pbdoc",
-            py::arg("key"))
+            nb::arg("key"))
         .def(
             "set_param_value_onoff",
             [](pyFps &cls, std::string key, std::string value) {
@@ -308,8 +310,8 @@ Parameters:
 Return:
     ret      [out]: error code
 )pbdoc",
-            py::arg("key"),
-            py::arg("value"))
+            nb::arg("key"),
+            nb::arg("value"))
         .def(
             "set_param_value_int",
             [](pyFps &cls, std::string key, std::string value) {
@@ -325,8 +327,8 @@ Parameters:
 Return:
     ret      [out]: error code
 )pbdoc",
-            py::arg("key"),
-            py::arg("value"))
+            nb::arg("key"),
+            nb::arg("value"))
         .def(
             "set_param_value_float",
             [](pyFps &cls, std::string key, std::string value) {
@@ -343,8 +345,8 @@ Parameters:
 Return:
     ret      [out]: error code
 )pbdoc",
-            py::arg("key"),
-            py::arg("value"))
+            nb::arg("key"),
+            nb::arg("value"))
         .def(
             "set_param_value_double",
             [](pyFps &cls, std::string key, std::string value) {
@@ -361,8 +363,8 @@ Parameters:
 Return:
     ret      [out]: error code
 )pbdoc",
-            py::arg("key"),
-            py::arg("value"))
+            nb::arg("key"),
+            nb::arg("value"))
         .def(
             "set_param_value_string",
             [](pyFps &cls, std::string key, std::string value) {
@@ -378,10 +380,10 @@ Parameters:
 Return:
     ret      [out]: error code
 )pbdoc",
-            py::arg("key"),
-            py::arg("value"))
+            nb::arg("key"),
+            nb::arg("value"))
 
-        .def_property_readonly("keys",
+        .def_prop_ro("keys",
                                [](pyFps &cls) {
                                    return cls.keys();
                                })
@@ -465,7 +467,7 @@ Return:
 )pbdoc")
         // Test if CONF process is running
 
-        .def_property_readonly(
+        .def_prop_ro(
             "CONFrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->confpid;
@@ -493,7 +495,7 @@ Return:
     ret      [out]: CONF process is running or not
 )pbdoc")
 
-        .def_property_readonly(
+        .def_prop_ro(
             "RUNrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->runpid;
@@ -522,38 +524,38 @@ Return:
 )pbdoc")
 
         ;
-    py::class_<FUNCTION_PARAMETER_STRUCT_MD>(m, "FPS_md")
-        // .def(py::init([]() {
+    nb::class_<FUNCTION_PARAMETER_STRUCT_MD>(m, "FPS_md")
+        // .def(nb::init([]() {
         //     return std::unique_ptr<FUNCTION_PARAMETER_STRUCT_MD>(new
         //     FUNCTION_PARAMETER_STRUCT_MD());
         // }))
-        .def_readonly("name", &FUNCTION_PARAMETER_STRUCT_MD::name)
-        .def_readonly("description", &FUNCTION_PARAMETER_STRUCT_MD::description)
-        .def_readonly("kwarray", &FUNCTION_PARAMETER_STRUCT_MD::keywordarray)
-        .def_readonly("workdir", &FUNCTION_PARAMETER_STRUCT_MD::workdir)
-        .def_readonly("datadir", &FUNCTION_PARAMETER_STRUCT_MD::datadir)
-        .def_readonly("confdir", &FUNCTION_PARAMETER_STRUCT_MD::confdir)
-        .def_readonly("sourcefname", &FUNCTION_PARAMETER_STRUCT_MD::sourcefname)
-        .def_readonly("sourceline", &FUNCTION_PARAMETER_STRUCT_MD::sourceline)
-        .def_readonly("pname", &FUNCTION_PARAMETER_STRUCT_MD::pname)
-        .def_readonly("callprogname",
+        .def_ro("name", &FUNCTION_PARAMETER_STRUCT_MD::name)
+        .def_ro("description", &FUNCTION_PARAMETER_STRUCT_MD::description)
+        .def_ro("kwarray", &FUNCTION_PARAMETER_STRUCT_MD::keywordarray)
+        .def_ro("workdir", &FUNCTION_PARAMETER_STRUCT_MD::workdir)
+        .def_ro("datadir", &FUNCTION_PARAMETER_STRUCT_MD::datadir)
+        .def_ro("confdir", &FUNCTION_PARAMETER_STRUCT_MD::confdir)
+        .def_ro("sourcefname", &FUNCTION_PARAMETER_STRUCT_MD::sourcefname)
+        .def_ro("sourceline", &FUNCTION_PARAMETER_STRUCT_MD::sourceline)
+        .def_ro("pname", &FUNCTION_PARAMETER_STRUCT_MD::pname)
+        .def_ro("callprogname",
                       &FUNCTION_PARAMETER_STRUCT_MD::callprogname)
-        //   .def_readonly("nameindexW",
+        //   .def_ro("nameindexW",
         //  &FUNCTION_PARAMETER_STRUCT_MD::nameindexW)
-        .def_readonly("NBnameindex", &FUNCTION_PARAMETER_STRUCT_MD::NBnameindex)
-        .def_readonly("confpid", &FUNCTION_PARAMETER_STRUCT_MD::confpid)
-        .def_readonly("confpidstarttime",
+        .def_ro("NBnameindex", &FUNCTION_PARAMETER_STRUCT_MD::NBnameindex)
+        .def_ro("confpid", &FUNCTION_PARAMETER_STRUCT_MD::confpid)
+        .def_ro("confpidstarttime",
                       &FUNCTION_PARAMETER_STRUCT_MD::confpidstarttime)
-        .def_readonly("runpid", &FUNCTION_PARAMETER_STRUCT_MD::runpid)
-        .def_readonly("runpidstarttime",
+        .def_ro("runpid", &FUNCTION_PARAMETER_STRUCT_MD::runpid)
+        .def_ro("runpidstarttime",
                       &FUNCTION_PARAMETER_STRUCT_MD::runpidstarttime)
-        .def_readonly("signal", &FUNCTION_PARAMETER_STRUCT_MD::signal)
-        .def_readonly("confwaitus", &FUNCTION_PARAMETER_STRUCT_MD::confwaitus)
-        .def_readonly("status", &FUNCTION_PARAMETER_STRUCT_MD::status)
-        .def_readonly("NBparamMAX", &FUNCTION_PARAMETER_STRUCT_MD::NBparamMAX)
-        //   .def_readonly("message", &FUNCTION_PARAMETER_STRUCT_MD::message)
-        .def_readonly("msgpindex", &FUNCTION_PARAMETER_STRUCT_MD::msgpindex)
-        .def_readonly("msgcode", &FUNCTION_PARAMETER_STRUCT_MD::msgcode)
-        .def_readonly("msgcnt", &FUNCTION_PARAMETER_STRUCT_MD::msgcnt)
-        .def_readonly("conferrcnt", &FUNCTION_PARAMETER_STRUCT_MD::conferrcnt);
+        .def_ro("signal", &FUNCTION_PARAMETER_STRUCT_MD::signal)
+        .def_ro("confwaitus", &FUNCTION_PARAMETER_STRUCT_MD::confwaitus)
+        .def_ro("status", &FUNCTION_PARAMETER_STRUCT_MD::status)
+        .def_ro("NBparamMAX", &FUNCTION_PARAMETER_STRUCT_MD::NBparamMAX)
+        //   .def_ro("message", &FUNCTION_PARAMETER_STRUCT_MD::message)
+        .def_ro("msgpindex", &FUNCTION_PARAMETER_STRUCT_MD::msgpindex)
+        .def_ro("msgcode", &FUNCTION_PARAMETER_STRUCT_MD::msgcode)
+        .def_ro("msgcnt", &FUNCTION_PARAMETER_STRUCT_MD::msgcnt)
+        .def_ro("conferrcnt", &FUNCTION_PARAMETER_STRUCT_MD::conferrcnt);
 }
