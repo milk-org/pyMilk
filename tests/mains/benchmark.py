@@ -40,3 +40,13 @@ def test_shm_ping_pong():
         for _ in range(100000):
             b.set_data(a.get_data(True, checkSemAndFlush=False, copy=False))
             a.set_data(b.get_data(True, checkSemAndFlush=False, copy=False))
+
+
+def test_stress_cpp_wrapper():
+    import numpy as np
+    from pyMilk.interfacing.shm import SHM
+
+    a = SHM('a', np.random.randn(300, 200).astype(np.float32))
+    with catchtime('loop 1000000 keyword read.') as _:
+        for _ in range(1000000):
+            a.get_keywords()
