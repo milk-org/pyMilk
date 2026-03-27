@@ -26,7 +26,7 @@ class CMakeExtension(Extension):
     '''
 
     def __init__(self, name, package, sourcedir=''):
-        Extension.__init__(self, 'pyMilk-cmake', sources=[])
+        Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)  # + '/' + self.name
         self.package = package
 
@@ -145,10 +145,11 @@ with open("README.md", 'r') as f:
 #raise ValueError(sys.argv)
 
 PACKAGE_PYMILK = 'pyMilk'
+PACKAGE_LIBS = 'milkengine'
 setup(
-        packages=[PACKAGE_PYMILK],  # same as name
+        packages=[PACKAGE_LIBS],  # same as name
         ext_modules=[
-                CMakeSelfExtension(package=PACKAGE_PYMILK),
+                CMakeExtension(PACKAGE_LIBS, PACKAGE_PYMILK, sourcedir=PACKAGE_LIBS),
         ],
         cmdclass=dict(build_ext=CMakeBuildExt),
         long_description=long_description)
