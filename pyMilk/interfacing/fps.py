@@ -219,16 +219,16 @@ class FPSManager:
         for fps_file in system_fps_files:
             self.find_fps(os.path.basename(fps_file).split('.')[0])
 
-        rm_keys = set()
+        non_matching_keys = set()
         for name, fpsobj in self.fps_cache.items():
             md = fpsobj.fps.md()
             kw_str = md.kwarray.strip(':')
             if (len(kw_str) == 0 or not any(
                     (fnmatch.fnmatch(kw, fps_keyword_glob)
                      for kw in kw_str.split(':')))):
-                rm_keys.add(name)
+                non_matching_keys.add(name)
 
-        for name in rm_keys:
+        for name in non_matching_keys:
             fps = self.fps_cache.pop(name)
             fps.disconnect()
 
