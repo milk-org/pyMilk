@@ -42,8 +42,13 @@ def creashmim(
         try:
             # Errors upon non-existence
             shm_handle = SHM(name, symcode=symcode, triDim=tri_dim)
-            # Errors upon wrong shape or size
-            shm_handle.set_data(np.zeros(shape, dtype=data_type))
+
+            if not (shm_handle.nptype == data_type and
+                    shm_handle.shape == shape):
+                # FIXME autosqueeze will make this perform wrong with singleton dims
+                # FIXME numpy type aliases will probably make this wrong as well
+                raise ValueError('Existing SHM wrong dtype or shape')
+
             # Errors upon lack of keyword space
             if shm_handle.IMAGE.md.NBkw < nb_kw:
                 raise ValueError(
@@ -62,13 +67,6 @@ def creashmim(
     if delete_existing:
         try:
             os.remove(f"{MILK_SHM_DIR}/{name_no_ext}.im.shm")
-        except FileNotFoundError:
-            pass
-        try:
-            for f in glob.glob(
-                    f"/dev/shm/sem..{MILK_SHM_DIR.replace('/', '.')}.{name_no_ext}_sem*"
-            ):
-                os.remove(f)
         except FileNotFoundError:
             pass
 

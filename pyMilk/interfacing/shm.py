@@ -70,17 +70,7 @@ except:
     #print('No libstdc++ in $CONDA_PREFIX/lib. Proceeding.')
     pass
 
-try:
-    try:  # First shot
-        from pyMilk.ImageStreamIOWrap import Image, Image_kw
-    except:  # Second shot - maybe you forgot the default path ?
-        import sys
-        sys.path.append("/usr/local/python")
-        from pyMilk.ImageStreamIOWrap import Image, Image_kw
-except Exception as exc:
-    print("pyMilk.interfacing.isio_shmlib:")
-    print("WARNING: did not find ImageStreamIOWrap. Compile or path issues ?")
-    raise exc
+from pyMilk.ImageStreamIOWrap import Image, Image_kw
 
 import typing as typ
 if typ.TYPE_CHECKING:
@@ -221,7 +211,10 @@ class SHM:
             else:
                 print(f"{self.FNAME}.im.shm will be overwritten")
                 # _checkExist opened the image, we can destroy.
-                self.IMAGE.destroy()
+                # But we don't need to destroy
+                # And that creates a brief lapse where the file, old nor new, doesn't exits
+                # So better just close, not destroy, then overwrite.
+                self.IMAGE.close()
 
             self.IMAGE.create(self.FNAME, data_c, location=location,
                               shared=shared, NBkw=nbkw)
@@ -346,64 +339,17 @@ class SHM:
     ) -> bool | None:
         self.close()
 
-    def rename_img(self, newname: str) -> None:
-        raise NotImplementedError()
-
     def close(self) -> None:
         """
         Clean close of a SHM data structure link
         """
         self.IMAGE.close()
 
-    def destroy(self):
-        self.IMAGE.destroy()
-
-    def read_meta_data(self, verbose: bool = True) -> None:
-        '''
-            Only for xaosim retro-compatibility
-        '''
-        if verbose:
-            self.print_meta_data()
-
-    def create_keyword_list(self) -> None:
-        '''
-            Deprecated.
-        '''
-        raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
-        )
-
-    def read_keywords(self) -> None:
-        '''
-            Deprecated.
-        '''
-        raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
-        )
-
-    def write_keywords(self) -> None:
-        '''
-            Deprecated.
-        '''
-        raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
-        )
-
-    def read_keyword(self, ii: int) -> None:
-        '''
-            Deprecated.
-        '''
-        raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
-        )
-
-    def write_keyword(self, ii: int) -> None:
-        '''
-            Deprecated.
-        '''
-        raise DeprecationWarning(
-                'This function is not used in pyMilk. Use get_keywords/set_keywords.'
-        )
+    def destroy(self) -> None:
+        # Do not destroy if the inode is not owned anymore.
+        if self.IMAGE.used and \
+                self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino:
+            self.IMAGE.destroy()
 
     def update_keyword(self, name: str, value: KWType,
                        comment: str | None = None) -> None:
@@ -414,7 +360,7 @@ class SHM:
         kws = self.IMAGE.get_kws_list()
         kws_names = [kw.name for kw in kws]
         if name not in kws_names:
-            raise AssertionError('Updating a keyword that does not exist yet.')
+            raise ValueError('Updating a keyword that does not exist yet.')
         idx = kws_names.index(name)
         if comment is None:  # Keeping prev comment, updating value only
             kws[idx] = Image_kw(name, value, kws[idx].comment)
@@ -471,6 +417,20 @@ class SHM:
         self.IMAGE.set_kws(kws)
 
     @typ.overload
+    def get_keyword(self, key: str, comment: typ.Literal[False] = False,
+                    n_tries: int = 4) -> KWType:
+        ...
+
+    @typ.overload
+    def get_keyword(self, key: str, comment: typ.Literal[True],
+                    n_tries: int = 4) -> tuple[KWType, str]:
+        ...
+
+    def get_keyword(self, key: str, comment: bool = False,
+                    n_tries: int = 4) -> KWType | tuple[KWType, str]:
+        return self.get_keywords(comment, n_tries)[key]
+
+    @typ.overload
     def get_keywords(self, comments: typ.Literal[False] = False,
                      n_tries: int = 4) -> KWDict:
         ...
@@ -513,12 +473,6 @@ class SHM:
     def print_meta_data(self) -> None:
         print(self.IMAGE.md)
 
-    def select_dtype(self) -> None:
-        raise NotImplementedError()
-
-    def select_atype(self) -> None:
-        raise NotImplementedError()
-
     def get_counter(self) -> int:
         return self.IMAGE.md.cnt0
 
@@ -534,10 +488,10 @@ class SHM:
         self.IMAGE.semflush(self.semID)
         ret = -1
         while ret < 0:
-            time.sleep(sleep_time)
             self._attempt_autorelink_if_needed()  # can raise!
             # ret is -1 is semaphore is alive and not posted
-            ret = self.IMAGE.semtrywait(self.semID)
+            self.IMAGE.getsemwaitindex(self.semID)
+            ret = self.IMAGE.semtimedwait(self.semID, sleep_time)
 
         # ret will be 1 (sem destroyed) or 0 (sem posted)
         return ret
@@ -564,6 +518,10 @@ class SHM:
         '''
         self._checkGrabSemaphore()
         return self.IMAGE.semtrywait(self.semID) == 0
+
+    def check_sem_timedwait(self, timeout: float) -> bool:
+        self._checkGrabSemaphore()
+        return self.IMAGE.semtimedwait(self.semID, timeout) == 0
 
     def check_sem_value(self) -> int:
         '''
@@ -721,7 +679,7 @@ class SHM:
         if "EXPTIME" in kws:
             retval = kws["EXPTIME"]
         else:
-            retval = kws.get("tint", 0.1234)
+            retval = kws.get("tint", 0.0)
 
         assert isinstance(retval, float)
         return retval
@@ -755,6 +713,7 @@ class SHM:
     def get_crop(self) -> tuple[int, int, int, int]:
         """
         Return image crop boundaries
+        FIXME: old specs for what the keywords mean are lost. Is this function correct?
         """
 
         kws = self.get_keywords()
@@ -784,7 +743,7 @@ class SHM:
             assert len(tup) == 4
             return tup
 
-        return (0, 0, self.shape[0], self.shape[1])
+        return (0, self.shape[0], 0, self.shape[1])
 
     #############################################################
     # ADDITIONAL FEATURES - NOT SUPPORTED BY xaosim shm STRUCTURE

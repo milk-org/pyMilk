@@ -4,6 +4,18 @@ import os
 from pyMilk.interfacing import fps
 
 
+def test_fps_overwrite():
+    with pytest.raises(fps.FPSDoesntExistError):
+        f = fps.FPS('some_name')
+
+    f = fps.FPS.create('some_name')
+    with pytest.raises(fps.FPSOverrideError):
+        f = fps.FPS.create('some_name')
+
+    f2 = fps.FPS.create('some_name', True)
+    f2.destroy()
+
+
 def test_smart_fps_instantiation():
 
     class A(fps.SmartAttributesFPS):
@@ -63,6 +75,16 @@ def test_smart_fps_instantiation():
 
     g.gain = 3.1415
     assert g.gain == pytest.approx(3.1415)
+
+    class H(fps.SmartAttributesFPS):
+        gain: float
+        _DICT_METADATA = {
+                'gain': ('toto', fps.FPS_type.FLOAT32,
+                         fps.FPS_flags.DEFAULT_INPUT, 'an_extra_argument')
+        }
+
+    with pytest.raises(fps.SmartFPSInitError):
+        h = H.create('another_uniquename')
 
 
 def test_smart_fps_find_annotations_cannot_be_overridden():
@@ -299,3 +321,12 @@ def test_smart_fps_auto():
     # TODO breakpoint() here and figure out the interaction with milk-fpsCTRL.
 
     f.destroy()
+
+
+def test_metadata_mot_mappable():
+
+    class NewFPS(fps.SmartAttributesFPSAutoMetadata):
+        gain: None
+
+    with pytest.raises(fps.SmartFPSInitError):
+        f = NewFPS.create('xxxx')

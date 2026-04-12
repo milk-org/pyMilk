@@ -141,39 +141,42 @@ class FPS:
     def run_isrunning(self) -> bool:
         return self.fps.RUNrunning == 1
 
-    def conf_start(self, timeoutsync: float | None = None) -> None:
+    def conf_start(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.CONFstart(), 'conf_start')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while (not self.conf_isrunning()) and (time.time() - start
-                                               < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while (not self.conf_isrunning()) and (time.time() - start
+                                                   < timeoutsync):
+                time.sleep(1e-4)
 
-    def conf_stop(self, timeoutsync: float | None = None) -> None:
+        return self.conf_isrunning()
+
+    def conf_stop(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.CONFstop(), 'conf_stop')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while self.conf_isrunning() and (time.time() - start < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while self.conf_isrunning() and \
+                    (time.time() - start < timeoutsync):
+                time.sleep(1e-4)
+        return not self.conf_isrunning()
 
-    def run_start(self, timeoutsync: float | None = None) -> None:
+    def run_start(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.RUNstart(), 'run_start')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while (not self.run_isrunning()) and (time.time() - start
-                                              < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while (not self.run_isrunning()) and (time.time() - start
+                                                  < timeoutsync):
+                time.sleep(1e-4)
+        return self.run_isrunning()
 
-    def run_stop(self, timeoutsync: float | None = None) -> None:
+    def run_stop(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.RUNstop(), 'run_stop')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while (self.run_isrunning()) and (time.time() - start < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while (self.run_isrunning()) and \
+                    (time.time() - start < timeoutsync):
+                time.sleep(1e-4)
+        return not self.run_isrunning()
 
     def tmux_start(self) -> None:
         self._errno_raiser(self.fps.TMUXstart(), 'tmux_start')
