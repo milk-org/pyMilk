@@ -106,15 +106,8 @@ errno_t functionparameter_RUNstart(
 
         // Send run command
         //
-        if (strstr(fps->md->execfullpath, "fpsexec") != NULL) {
-            EXECUTE_SYSTEM_COMMAND("tmux send-keys -t %s:run \" %s %s:runstart\" C-m",
-                                   fps->md->name,
-                                   fps->md->execfullpath,
-                                   fps->md->name);
-        } else {
-            EXECUTE_SYSTEM_COMMAND("tmux send-keys -t %s:run \" fpsrunstart\" C-m",
-                                   fps->md->name);
-        }
+        EXECUTE_SYSTEM_COMMAND("tmux send-keys -t %s:run \" fpsrunstart\" C-m",
+                                fps->md->name);
 
         fps->md->status |= FUNCTION_PARAMETER_STRUCT_STATUS_CMDRUN;
         fps->md->signal |=

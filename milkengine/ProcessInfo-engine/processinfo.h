@@ -83,7 +83,7 @@ extern pid_t CLIPID;
  * File name:  /tmp/proc.PID.shm
  *
  */
-typedef struct PROCESSINFO
+typedef struct
 {
     char name[STRINGMAXLEN_PROCESSINFO_NAME]; /// process name (human-readable)
 
@@ -147,10 +147,6 @@ typedef struct PROCESSINFO
     //  2+ : frame(s) missed
     uint64_t triggermissedframe_cumul; // cumulative missed frames
     int      triggerstatus;            // see TRIGGERSTATUS codes
-
-    // Pointer to trigger image (process-local, not valid in SHM for other processes)
-    // Used by libprocessinfo to wait on stream without depending on global data
-    IMAGE *trigger_image;
 
     int       RT_priority; // -1 if unused. 0-99 for higher priority
     cpu_set_t CPUmask;

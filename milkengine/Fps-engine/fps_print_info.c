@@ -31,14 +31,6 @@ int function_parameter_print_info(
     printf(C_TITLE " %-20s : " C_HDR "%s" COLORRESET "\n", "FPS Name", fps->md->name);
     printf(C_TITLE " %-20s : " C_CMD "%s" COLORRESET "\n", "Command Key", fps->md->callprogname);
     printf(C_TITLE " %-20s : " COLORRESET "%s\n", "Description", fps->md->description);
-    
-    char * exec_basename = strrchr(fps->md->execfullpath, '/');
-    if (exec_basename) {
-        exec_basename++;
-    } else {
-        exec_basename = fps->md->execfullpath;
-    }
-    printf(C_TITLE " %-20s : " C_CMD "./%s" COLORRESET "\n", "Executable", exec_basename);
 
     if (verbose) {
         printf(C_TITLE " %-20s : " COLORRESET "%s\n", "Work Directory", fps->md->workdir);
@@ -96,7 +88,7 @@ int function_parameter_print_info(
                     valstring,
                     200);
             }
-            
+
             const char* type_str = "UNKNOWN";
             switch(fps->parray[pindex].type) {
                 case FPTYPE_UNDEF: type_str = "UNDEF"; break;

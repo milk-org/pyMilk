@@ -142,14 +142,7 @@ int functionparameter_FPS_tmux_init(
 
 
     char progexec[1024];
-    if( (strlen(fps->md->execfullpath) > 0) && (strcmp(fps->md->execfullpath, "unknown") != 0) )
-    {
-        strncpy(progexec, fps->md->execfullpath, 1023);
-    }
-    else
-    {
-        snprintf(progexec, 1024, "%s-exec", fps->md->callprogname);
-    }
+    snprintf(progexec, 1024, "%s-exec", fps->md->callprogname);
 
     snprintf(functionstring,
              funcstring_maxlen,
@@ -303,7 +296,7 @@ int functionparameter_FPS_tmux_send_dispatch(
     snprintf(cmd_str, sizeof(cmd_str), "%s%s", exec_path, extra_args);
     functionparameter_FPS_tmux_send(fps_name, window, cmd_str);
     printf("running command %s in tmux window %s:%d\n", cmd_str, fps_name, window_index);
-    
+
     return 0;
 }
 
@@ -312,7 +305,7 @@ int functionparameter_FPS_tmux_send_dispatch(
 char* functionparameter_FPS_get_executable_path(char *buffer, size_t size)
 {
     if (!buffer || size == 0) return NULL;
-    
+
     ssize_t len = readlink("/proc/self/exe", buffer, size - 1);
     if (len != -1) {
         buffer[len] = '\0';

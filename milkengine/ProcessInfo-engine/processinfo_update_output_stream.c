@@ -45,13 +45,15 @@ errno_t processinfo_update_output_stream(
         if(processinfo != NULL)
         {
             // If input_image is NULL, try to use processinfo->trigger_image
+            /* Can't fix this in this backport, can I?
             if(input_image == NULL)
             {
-                if(processinfo->trigger_image != NULL)
+                if(processinfo->triggerstreamID != -1)
                 {
-                    input_image = processinfo->trigger_image;
+                    input_image = // imgid -> IMAGE but don't use data. struct;
                 }
             }
+            */
 
             if(input_image != NULL)
             {
