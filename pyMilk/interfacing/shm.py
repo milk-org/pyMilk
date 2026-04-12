@@ -70,7 +70,7 @@ except:
     #print('No libstdc++ in $CONDA_PREFIX/lib. Proceeding.')
     pass
 
-from pyMilk.ImageStreamIOWrap import Image, Image_kw
+from pyMilk.ImageStreamIOWrap import Image, Image_kw, Image_md
 
 import typing as typ
 if typ.TYPE_CHECKING:
@@ -350,6 +350,25 @@ class SHM:
         if self.IMAGE.used and \
                 self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino:
             self.IMAGE.destroy()
+
+    '''
+    Metadata as property
+    '''
+
+    @property
+    def md(self) -> Image_md:
+        return self.IMAGE.md
+
+    '''
+    __getitem__, __setitem__ used for keywords
+    __setitem__ allows keyword creation, but with no comment.
+    '''
+
+    def __getitem__(self, key: str) -> KWType:
+        return self.get_keyword(key)
+
+    def __setitem__(self, key: str, value: KWType) -> None:
+        self.set_keywords({key: value})
 
     def update_keyword(self, name: str, value: KWType,
                        comment: str | None = None) -> None:

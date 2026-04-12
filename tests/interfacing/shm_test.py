@@ -93,6 +93,42 @@ def test_keyword():
     shm_write.destroy()
 
 
+def test_keyword_getitem_setitem():
+    data = np.random.randn(50, 20)
+    shm_write = SHM("pyMilk_autotest", data, nbkw=6)
+    kww = {
+            'yo': ('lo', 'un commentaire'),
+            'toto': 17,
+            'arthur': 3.1415,
+            'some': ('stuff', )
+    }
+    shm_write.set_keywords(kww)
+
+    shm_read = SHM("pyMilk_autotest")
+    assert shm_read['yo'] == 'lo'
+    assert shm_read['toto'] == 17
+    assert shm_read['arthur'] == 3.1415
+    assert shm_read['some'] == 'stuff'
+
+    # Creation
+    shm_read['new_kw'] = 'new_val'
+    assert shm_write['new_kw'] == 'new_val'
+
+    # Re-set of existing
+    shm_write['arthur'] = 2.718
+    assert shm_read['arthur'] == 2.718
+    shm_read['arthur'] = 3.14
+    assert shm_write['arthur'] == 3.14
+
+    # Illegal read
+    with pytest.raises(KeyError):
+        x = shm_read['80085']
+
+    # Set with different type !
+    shm_read['arthur'] = 'string'
+    assert shm_write['arthur'] == 'string'
+
+
 def test_fits():
     for data in [
             np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),
