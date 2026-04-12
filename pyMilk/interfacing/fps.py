@@ -109,10 +109,6 @@ class FPS:
         self.fps.add_entry(key, comment, datatype, flags)
         self.key_types[key] = datatype
 
-    def _destroy(self) -> None:
-        # MAKING ME UNHAPPY
-        self.fps.un
-
     def set_param(self, key: str, value: FPVal) -> None:
         # TODO: _autorelink implementation !
         if key in self.key_types:
@@ -188,6 +184,7 @@ class FPS:
         self.fps.disconnect()
 
     def destroy(self) -> None:
+        self.disconnect()
         fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{self.name}.fps.shm'
         os.remove(fps_filepath)
 
