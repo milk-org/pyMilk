@@ -4,9 +4,10 @@ import numpy as np
 
 from pyMilk.interfacing.shm import SHM
 
-from ..conftestaux.async_shm_fixtures import (threaded_shm_data_pingpong,
-                                              threaded_shm_poster,
-                                              threaded_shm_poster_recreator)
+from ..conftestaux.async_shm_fixtures import (
+        threaded_shm_data_pingpong, threaded_shm_poster,
+        threaded_shm_poster_recreator, threaded_shm_create_kill_recreate,
+        threaded_shm_data_pingpong_gpu)
 '''
 CAUTION
 
@@ -34,6 +35,28 @@ def test_shm_threaded_pingpong(threaded_shm_data_pingpong):
         #print(f'M: getting {_=}')
         dat2 = s_from_p.get_data(True, checkSemAndFlush=False)
         assert np.all(dat2 == 1)
+
+
+'''
+# Does not work. Reason unknown. It's probably the forked approach and memory pointers and some bs?
+
+@pytest.mark.parametrize('threaded_shm_data_pingpong_gpu',
+                         [('x', (2, 3, 4), np.float32, 0.01)], indirect=True)
+def test_shm_threaded_pingpong_gpu(threaded_shm_data_pingpong_gpu):
+    #thread = threaded_shm_data_pingpong
+
+    s_to_p, s_from_p, process = threaded_shm_data_pingpong_gpu
+
+    dat = np.zeros((2, 3, 4), np.float32)
+    import time
+    time.sleep(1.0)
+
+    for _ in range(23):
+        s_to_p.set_data(dat)
+        #print(f'M: getting {_=}')
+        dat2 = s_from_p.get_data(True, checkSemAndFlush=False)
+        assert np.all(dat2 == 1)
+'''
 
 
 @pytest.mark.parametrize('threaded_shm_poster',
@@ -110,3 +133,26 @@ def test_multi_recv_data_2(threaded_shm_poster, do_counter):
 
     sliced = dat[:, 0, 0, 0]
     assert np.all(sliced - sliced[0] == np.arange(100))
+
+
+@pytest.mark.parametrize('threaded_shm_create_kill_recreate',
+                         [('x', (2, 3, 4), np.float32, 0.01)], indirect=True)
+def test_link_kill_ressucitate(threaded_shm_create_kill_recreate):
+    s_to_p, s_from_p, _ = threaded_shm_create_kill_recreate
+    print(f'passed from fixt -- {s_to_p.IMAGE.md.inode}')
+
+    s_to_p.get_data(True)
+    s_from_p.get_data(True)  # Only posted after s_to_p is destroyed
+
+    print(f'at nonblockwait -- {s_to_p.IMAGE.md.inode}')
+    s_to_p = s_to_p.non_block_wait_until_recreation(sleep_time=0.001)
+    d = s_to_p.get_data()
+    assert d.dtype == np.float32
+    assert d.shape == (2, 3, 4)
+    s_from_p.get_data(True)
+
+    print(f'at nonblockwait -- {s_to_p.IMAGE.md.inode}')
+    s_to_p = s_to_p.non_block_wait_until_recreation(sleep_time=0.001)
+    d = s_to_p.get_data()
+    assert d.dtype == np.int32
+    assert d.shape == (5, 2, 3)

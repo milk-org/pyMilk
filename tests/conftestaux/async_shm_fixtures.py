@@ -68,9 +68,35 @@ def _thread_func_looper_with_forceful_recreation(shm_toprocess: SHM,
                 dat)  # I count that this induces a set_data and sempost
 
 
+def _thread_func_create_kill_recreate(shm_toprocess: SHM, shm_fromprocess: SHM,
+                                      delay: float, evt) -> None:
+    time.sleep(0.1)  # be sure we got time to instantiate in main process
+    shm_toprocess.repost()
+    print(f'orig -- {shm_toprocess.IMAGE.md.inode}')
+    time.sleep(0.1)
+    shm_toprocess = SHM(shm_toprocess.FNAME,
+                        (shm_toprocess.shape, shm_toprocess.nptype))
+    shm_fromprocess.repost()
+    print(f'recreated -- {shm_toprocess.IMAGE.md.inode}')
+    time.sleep(0.1)
+    shm_toprocess.repost()
+
+    time.sleep(0.1)
+    shm_toprocess = SHM(shm_toprocess.FNAME, ((5, 2, 3), np.int32))
+    shm_fromprocess.repost()
+    print(f'recreated -- {shm_toprocess.IMAGE.md.inode}')
+    time.sleep(0.1)
+    shm_toprocess.repost()
+
+
 @pytest.fixture
 def threaded_shm_data_pingpong(request):
     yield from subfixture(request, _thread_func_pingpong)
+
+
+@pytest.fixture
+def threaded_shm_data_pingpong_gpu(request):
+    yield from subfixture(request, _thread_func_pingpong, location=0)
 
 
 @pytest.fixture
@@ -84,16 +110,24 @@ def threaded_shm_poster_recreator(request):
                           _thread_func_looper_with_forceful_recreation)
 
 
-def subfixture(request, subprocess_callable):
+@pytest.fixture
+def threaded_shm_create_kill_recreate(request):
+    yield from subfixture(request, _thread_func_create_kill_recreate)
+
+
+def subfixture(request, subprocess_callable, location=-1):
 
     prefix, shape, dtype, delay = request.param
 
-    shm_toprocess = SHM(prefix + '_toprocess', (shape, dtype))
-    shm_fromprocess = SHM(prefix + '_fromprocess', (shape, dtype))
+    shm_toprocess = SHM(prefix + '_toprocess', (shape, dtype),
+                        location=location)
+    shm_fromprocess = SHM(prefix + '_fromprocess', (shape, dtype),
+                          location=location)
     exit_event = multiprocessing.Event()
 
     # Originally attempted with a threading.Thread, but that causes issues
     # because the semID issued is identical !
+    # Also completely nuts to copy the struct, would be much better to pass name, shape, dtype !!
     subprocess = multiprocessing.Process(
             target=subprocess_callable, args=(shm_toprocess, shm_fromprocess,
                                               delay, exit_event), daemon=False)
