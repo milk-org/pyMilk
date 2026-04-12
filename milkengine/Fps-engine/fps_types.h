@@ -377,8 +377,8 @@ typedef struct
     char description[FPS_DESCR_STRMAXLEN];
     char helptext[FPS_HELPTEXT_STRMAXLEN];
     char execfullpath[512];
-    char keywordarray[
-        FPS_KEYWORDARRAY_STRMAXLEN];
+
+    char keywordarray[FPS_KEYWORDARRAY_STRMAXLEN];
     char workdir[FPS_CWD_STRLENMAX];
     char datadir[FPS_DIR_STRLENMAX];
     char confdir[FPS_DIR_STRLENMAX];
