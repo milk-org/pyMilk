@@ -10,11 +10,18 @@ by running this file with pytest -s
 '''
 
 
-@pytest.fixture()
+@pytest.fixture
 def shm_fixt():
     s = SHM('x', np.random.randn(10, 15))
     yield s
     s.destroy()
+
+
+@pytest.fixture
+def fps_fixt():
+    f = FPS.create('some_fps')
+    yield f
+    f.destroy()
 
 
 def test_print_shm(shm_fixt: SHM):
@@ -27,3 +34,9 @@ def test_str_shm(shm_fixt: SHM):
 
 def test_repr_shm(shm_fixt: SHM):
     print(repr(shm_fixt))
+
+
+def test_print_fps(fps_fixt: FPS):
+    print(fps_fixt)
+    print(str(fps_fixt))
+    print(repr(fps_fixt))

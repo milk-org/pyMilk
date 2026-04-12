@@ -4,6 +4,32 @@ import os
 from pyMilk.interfacing import fps
 
 
+def test_fps_errno_raiser():
+    f = fps.FPS.create('some_name')
+
+    f._errno_raiser(0, 'info')
+
+    with pytest.raises(fps.FPSErrnoError):
+        f._errno_raiser(1, 'error 1')
+
+    f.destroy()
+
+
+def test_fps_keyerrors():
+    f = fps.FPS.create('some_name')
+
+    # Successful get on trivial FPS
+    assert f['Name'] == 'some_name'
+
+    with pytest.raises(ValueError):
+        f['no_param']
+
+    with pytest.raises(ValueError):
+        f['no_param_2'] = 1.0
+
+    f.destroy()
+
+
 def test_fps_overwrite():
     with pytest.raises(fps.FPSDoesntExistError):
         f = fps.FPS('some_name')
