@@ -72,7 +72,7 @@ Return:
              nb::arg("name"))
 
         .def("close",
-             &pyProcessInfo::close,
+             nb::overload_cast<const char *>(&pyProcessInfo::close),
              R"pbdoc(Close an existing Process Info object in shared memory
 
 Parameters:
@@ -80,7 +80,7 @@ Parameters:
 Return:
     ret : error code
 )pbdoc",
-             nb::arg("name"))
+             nb::arg("name")="")
 
         .def("sigexit",
              &pyProcessInfo::sigexit,

@@ -107,6 +107,19 @@ class pyProcessInfo
     int close(const char *pname)
     {
         processinfo_shm_close(m_pinfo, m_fd);
+        m_pinfo = nullptr;
+        return EXIT_SUCCESS;
+    }
+
+    /**
+    * @brief Close an existing Process Info object in shared memory
+    *
+    * @return int : error code
+    */
+    int close()
+    {
+        processinfo_shm_close(m_pinfo, m_fd);
+        m_pinfo = nullptr;
         return EXIT_SUCCESS;
     }
 
