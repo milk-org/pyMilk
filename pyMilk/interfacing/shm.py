@@ -663,15 +663,17 @@ class SHM:
             data_towrite = data_towrite.copy('F')
         self.IMAGE.write(data_towrite)
 
-    def repost(self, atime: datetime.datetime | None = None) -> None:
+    def repost(self, atime: float | datetime.datetime | None = None) -> None:
         """
-            Repost semaphore and writetimes
+            Repost semaphore and writetimes || hang on it actually repost acqtimes as well.
             But does not handle data.
         """
         if atime is None:
             self.IMAGE.update()
-        else:
+        elif isinstance(atime, float) or isinstance(atime, int):
             self.IMAGE.update_atime(atime)
+        else:
+            self.IMAGE.update_atime(atime.timestamp())
 
     def save_as_fits(self, fitsname: str, **kwargs) -> int:
         """

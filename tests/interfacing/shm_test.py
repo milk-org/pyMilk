@@ -236,24 +236,27 @@ def test_create_good_data_tuple(data):
 
 
 def test_failing_autorelink():
-    from pyMilk import errors as perr
 
     a = SHM('x_autorelink', ((2, 3), np.int32))
 
     b = SHM('x_autorelink', ((5, 3, 4), np.int32))
-    with pytest.raises(perr.AutoRelinkSizeError):
+    with pytest.raises(errors.AutoRelinkSizeError):
         data = a.get_data()
 
     b = SHM('x_autorelink', ((2, 3), np.float32))
-    with pytest.raises(perr.AutoRelinkTypeError):
+    with pytest.raises(errors.AutoRelinkTypeError):
         data = a.get_data()
 
     b = SHM('x_autorelink', ((2, 3), np.int32))
     a.get_data()
 
 
-def test_copy_false():
-    a = SHM('x_copyfalse', ((20, 30), np.int32))
+@pytest.mark.parametrize('dtype', [
+        np.int8, np.uint8, np.int16, np.uint16, np.int32, np.uint32, np.int64,
+        np.uint64, np.float32, np.float64
+])
+def test_copy_false(dtype):
+    a = SHM('x_copyfalse', ((20, 30), dtype))
 
     b = SHM('x_copyfalse')
     arr = b.get_data(copy=False)
@@ -261,7 +264,7 @@ def test_copy_false():
     np.testing.assert_array_equal(arr, np.zeros((20, 30), np.int32))
     arr[1, 2] = 2
 
-    arr2 = a.get_data(copy=True)
+    arr2 = a.get_data(copy=False)
     np.testing.assert_array_equal(arr, arr2)
 
 
@@ -343,3 +346,34 @@ def test_get_crop():
     assert s.get_crop() == (5, 14, 22, 58)
 
     s.destroy()
+
+
+def test_shm_repost():
+    s = SHM('something', np.random.randn(2, 3))
+    s2 = SHM('something')
+
+    import time, datetime
+
+    t1 = time.time()
+    s.set_data(np.random.randn(*s.shape))
+    t2 = time.time()
+
+    assert t1 < s2.md.writetime < t2
+    assert s2.md.acqtime == s2.md.writetime
+
+    t1 = time.time()
+    s.repost()
+    t2 = time.time()
+
+    assert t1 < s2.md.writetime < t2
+    assert s2.md.acqtime == s2.md.writetime
+
+    s.repost(t1)
+    assert s2.md.acqtime == t1
+    s.repost(datetime.datetime.fromtimestamp(t2))
+    assert abs(s2.md.acqtime - t2) < 0.5e-6
+
+    s2.repost(t1)
+    assert s.md.acqtime == t1
+    s2.repost(datetime.datetime.fromtimestamp(t2))
+    assert abs(s.md.acqtime - t2) < 0.5e-6
