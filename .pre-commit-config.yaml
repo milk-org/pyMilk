@@ -24,7 +24,7 @@ repos:
     -   id: check-yaml
     -   id: debug-statements
     -   id: name-tests-test
-        exclude: conftestaux/
+        exclude: 'conftestaux/.*|mains/.*'
         #args: [--pytest-test-first]
     -   id: requirements-txt-fixer
 #-   repo: local

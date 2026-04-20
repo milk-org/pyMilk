@@ -450,11 +450,6 @@ int functionparameter_UserInputSetParamValue(
                 break;
             }
 
-            if(strncmp(fpsentry->parray[pindex].keywordfull, ".procinfo.", 10) == 0)
-            {
-                fpsentry->md->processinfo_change_cnt++;
-            }
-
             fpsentry->parray[pindex].cnt0++;
             fpsentry->parray[pindex].value_cnt++;
 

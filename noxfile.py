@@ -76,7 +76,8 @@ def tests_run_coverage(session: nox.Session):
     session.run("./clean.sh", external=True)
 
     session.env['COVERAGE'] = 'ON'
-    session.install('pybind11', 'setuptools')
+    session.install('nanobind', 'setuptools', 'coverage', 'pytest')
+    session.install('.')  # for dependencies only...
 
     session.run(*('python setup.py build_ext --inplace'.split()))
     print(os.path.abspath(os.getcwd()))
@@ -87,6 +88,19 @@ def tests_run_coverage(session: nox.Session):
 
     session.run('coverage', 'run')
     session.run('coverage', 'report')  # TODO where html??
-    session.run(*(
-            'gcovr --verbose -r . --html-details -o gcov_html/c_coverage.html'.
-            split()))
+    session.run('coverage', 'html')  # TODO where html??
+
+    os.makedirs('gcov_html', exist_ok=True)
+    session.run(
+            'gcovr',
+            '--verbose',
+            '-r',
+            '.',
+            '--exclude',
+            '.*/nanobind/.*',
+            '--exclude',
+            '.*/pybind.*',
+            '--html-details',
+            '-o',
+            'gcov_html/c_coverage.html',
+    )

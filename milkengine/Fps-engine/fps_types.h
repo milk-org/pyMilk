@@ -373,58 +373,103 @@ typedef struct
 
 typedef struct
 {
-    char name[STRINGMAXLEN_FPS_NAME];
+    // process name
+    // Name can include numbers in the format -XX-YY to allow for multiple
+    // structures be created by the same process function and to pass arguments (XX, YY) to process function
+    char name[STRINGMAXLEN_FPS_NAME]; // example: pname-01-32
+
     char description[FPS_DESCR_STRMAXLEN];
-    char helptext[FPS_HELPTEXT_STRMAXLEN];
-    char execfullpath[512];
-    char keywordarray[
-        FPS_KEYWORDARRAY_STRMAXLEN];
+
+    char pad_for_future_version_1[8192];
+    char pad_for_future_version_2[512];
+
+    // keyword array, convenient to classify/sort FPSs
+    // Upon FPS creation by function_parameter_struct_create, keywordarray is imported from env variable FPS_KEYWORDARRAY
+    // syntax is ":keyw0:keyw1:keyw2:"
+    char keywordarray[FPS_KEYWORDARRAY_STRMAXLEN];
+
+    // where should processes run from ?
     char workdir[FPS_CWD_STRLENMAX];
+
+    // [output] where should configurations and results be written to ?
     char datadir[FPS_DIR_STRLENMAX];
+    // [input] directory for configuration
     char confdir[FPS_DIR_STRLENMAX];
+
+    // source code file name
     char sourcefname[FPS_SRCDIR_STRLENMAX];
+    // souce code line
     int sourceline;
-    char pname[FPS_PNAME_STRMAXLEN];
-    char callprogname[
-        FPS_CALLPROGNAME_STRMAXLEN];
-    char callfuncname[
-        FPS_CALLFUNCNAME_STRMAXLEN];
-    char tmuxname[
-        STRINGMAXLEN_PROCESSINFO_TMUXNAME];
-    char nameindexW[16][10];
-    int  NBnameindex;
+
+    // the name and indices are automatically parsed in the following format
+    char pname[FPS_PNAME_STRMAXLEN]; // example: pname
+    char callprogname[FPS_CALLPROGNAME_STRMAXLEN];
+    char callfuncname[FPS_CALLFUNCNAME_STRMAXLEN];
+
+    char pad_for_future_version_3[100];
+
+    char nameindexW[16][10]; // subnames
+    int  NBnameindex;        // example: 2
+
+    // configuration will run in tmux session pname-XX:conf
+    // process       will run in tmux session pname-XX:run
+
+    // PID of process owning parameter structure configuration
     pid_t           confpid;
     struct timespec confpidstarttime;
+
+    // PID of process running on this fps
     pid_t           runpid;
     struct timespec runpidstarttime;
+
+    // shared objects (modules) required to be loaded
     int  NBmodule;
-    char modulename[FPS_MAXNB_MODULE][
-        FPS_MODULE_STRMAXLEN];
+    char modulename[FPS_MAXNB_MODULE][FPS_MODULE_STRMAXLEN];
+
+    // Used to send signals to configuration process
     uint64_t signal;
+
+    // configuration wait timer value [us]
     uint64_t confwaitus;
-    uint32_t status;
-    uint64_t processinfo_change_cnt;
+
+    uint32_t status; // conf and process status
+
+    uint64_t future_use_1;
+
+    // size of parameter array (= max number of parameter supported)
     long NBparamMAX;
-    char message[FPS_NB_MSG][
-        FUNCTION_PARAMETER_STRUCT_MSG_LEN];
+
+    char message[FPS_NB_MSG][FUNCTION_PARAMETER_STRUCT_MSG_LEN];
+
+    // to which entry does the message refer to ?
     int msgpindex[FPS_NB_MSG];
+
+    // What is the nature of the message/error ?
     uint32_t msgcode[FPS_NB_MSG];
+
     long msgcnt;
+
     uint32_t conferrcnt;
+
 } FUNCTION_PARAMETER_STRUCT_MD;
 
 #define FPS_LOCALSTATUS_CONFLOOP 0x0001
 
-typedef struct FUNCTION_PARAMETER_STRUCT
+typedef struct
 {
+    // these two structures are shared
     FUNCTION_PARAMETER_STRUCT_MD *md;
-    FUNCTION_PARAMETER           *parray;
-    uint16_t localstatus;
+    FUNCTION_PARAMETER           *parray; // array of function parameters
+
+    // these variables are local to each process
+    uint16_t localstatus; // 1 if conf loop should be active
     int      SMfd;
     uint32_t CMDmode;
-    long NBparam;
-    long NBparamActive;
-    CMDSETTINGS cmdset;
+
+    long NBparam;       // number of parameters in array
+    long NBparamActive; // number of active parameters
+
+    CMDSETTINGS cmdset; // local copy of cmd settings
 } FUNCTION_PARAMETER_STRUCT;
 
 typedef struct
@@ -466,25 +511,37 @@ typedef struct
 
 typedef struct
 {
+
     char cmdstring[STRINGMAXLEN_FPS_CMDLINE];
-    uint64_t inputindex;
+
+    uint64_t inputindex; // order in which tasks are submitted
+
+    // Tasks in separate queues can run in parallel (not waiting for last task to run new one)
+    // Tasks within a queue run sequentially
     uint32_t queue;
+    // Default queue is 0
+
     uint64_t status;
     uint64_t flag;
-    int fpsindex;
+
+    int fpsindex; // used to track status
+
     struct timespec creationtime;
     struct timespec activationtime;
     struct timespec completiontime;
+
 } FPSCTRL_TASK_ENTRY;
 
+// status of control / monitoring process
+//
 typedef struct
 {
-    int      exitloop;
-    int      fpsCTRL_DisplayMode;
+    int      exitloop;            // exit control loop if 1
+    int      fpsCTRL_DisplayMode; // Display mode
     int      fpsCTRL_DisplayVerbose;
-    uint32_t mode;
-    int      NBfps;
-    int      NBkwn;
+    uint32_t mode;  // GUI mode
+    int      NBfps; // Number of FPS entries
+    int      NBkwn; // Number of keyword nodes
     long     NBindex;
     char     fpsnamemask[100];
     int      nodeSelected;
@@ -498,9 +555,6 @@ typedef struct
     int      fpsCTRLfifofd;
     int      direction;
     int      scheduler_wrowstart;
-    int      display_offset[100];
-    char     milkseq_name[64];
-    void    *milkseq_state; // cast to MILKSEQ_STATE* where needed
 } FPSCTRL_PROCESS_VARS;
 
 #define NB_KEYWNODE_MAX 6000
@@ -508,19 +562,20 @@ typedef struct
 
 typedef struct
 {
-    char keywordfull[
-        FUNCTION_PARAMETER_KEYWORD_STRMAXLEN *
-        FUNCTION_PARAMETER_KEYWORD_MAXLEVEL];
-    char keyword[
-        FUNCTION_PARAMETER_KEYWORD_MAXLEVEL][
-        FUNCTION_PARAMETER_KEYWORD_STRMAXLEN];
+    char keywordfull[FUNCTION_PARAMETER_KEYWORD_STRMAXLEN *
+                                                          FUNCTION_PARAMETER_KEYWORD_MAXLEVEL];
+    char keyword[FUNCTION_PARAMETER_KEYWORD_MAXLEVEL][FUNCTION_PARAMETER_KEYWORD_STRMAXLEN];
     int keywordlevel;
+
     int parent_index;
+
     int NBchild;
     int child[MAX_NB_CHILD];
-    int leaf;
+
+    int leaf; // 1 if this is a leaf (no child)
     int fpsindex;
     int pindex;
+
 } KEYWORD_TREE_NODE;
 
 #endif /* FPS_TYPES_H */

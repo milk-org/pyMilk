@@ -18,7 +18,7 @@ PYBIND11_MODULE(ProcessInfoWrap, m)
 {
     m.doc() = "ProcessInfoWrap library module";
 
-    py::class_<timespec>(m, "timespec")
+    py::class_<timespec>(m, "timespec", py::module_local())
         .def(py::init<time_t, long>())
         .def_readwrite("tv_sec", &timespec::tv_sec)
         .def_readwrite("tv_nsec", &timespec::tv_nsec);
@@ -71,7 +71,7 @@ Return:
              py::arg("name"))
 
         .def("close",
-             &pyProcessInfo::close,
+             py::overload_cast<const char*>(&pyProcessInfo::close),
              R"pbdoc(Close an existing Process Info object in shared memory
 
 Parameters:
@@ -79,7 +79,7 @@ Parameters:
 Return:
     ret : error code
 )pbdoc",
-             py::arg("name"))
+             py::arg("name")="")
 
         .def("sigexit",
              &pyProcessInfo::sigexit,

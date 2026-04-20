@@ -27,6 +27,7 @@ import time
 import glob
 
 _CORES = os.sched_getaffinity(0)
+from . import glib_loader_fix
 from pyMilk.FpsWrap import fps as CPTFPS, FPS_type, FPS_flags
 
 os.sched_setaffinity(0, _CORES)
@@ -79,7 +80,7 @@ class FPS:
                       True)  # thrown away, opened as "read" in constructor
 
         fps = cls(name)
-        fps.add_param('Name', 'Name', FPS_type.STRING,
+        fps.add_param('Name', 'NameComment', FPS_type.STRING,
                       FPS_flags.DEFAULT_STATUS)  # 0x5 = VISIBLE | ACTIVE
         fps['Name'] = name
 
@@ -109,10 +110,6 @@ class FPS:
         self.fps.add_entry(key, comment, datatype, flags)
         self.key_types[key] = datatype
 
-    def _destroy(self) -> None:
-        # MAKING ME UNHAPPY
-        self.fps.un
-
     def set_param(self, key: str, value: FPVal) -> None:
         # TODO: _autorelink implementation !
         if key in self.key_types:
@@ -141,39 +138,42 @@ class FPS:
     def run_isrunning(self) -> bool:
         return self.fps.RUNrunning == 1
 
-    def conf_start(self, timeoutsync: float | None = None) -> None:
+    def conf_start(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.CONFstart(), 'conf_start')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while (not self.conf_isrunning()) and (time.time() - start
-                                               < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while (not self.conf_isrunning()) and (time.time() - start
+                                                   < timeoutsync):
+                time.sleep(1e-4)
 
-    def conf_stop(self, timeoutsync: float | None = None) -> None:
+        return self.conf_isrunning()
+
+    def conf_stop(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.CONFstop(), 'conf_stop')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while self.conf_isrunning() and (time.time() - start < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while self.conf_isrunning() and \
+                    (time.time() - start < timeoutsync):
+                time.sleep(1e-4)
+        return not self.conf_isrunning()
 
-    def run_start(self, timeoutsync: float | None = None) -> None:
+    def run_start(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.RUNstart(), 'run_start')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while (not self.run_isrunning()) and (time.time() - start
-                                              < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while (not self.run_isrunning()) and (time.time() - start
+                                                  < timeoutsync):
+                time.sleep(1e-4)
+        return self.run_isrunning()
 
-    def run_stop(self, timeoutsync: float | None = None) -> None:
+    def run_stop(self, timeoutsync: float | None = None) -> bool:
         self._errno_raiser(self.fps.RUNstop(), 'run_stop')
-        if not timeoutsync:
-            return
-        start = time.time()
-        while (self.run_isrunning()) and (time.time() - start < timeoutsync):
-            time.sleep(1e-4)
+        if timeoutsync:
+            start = time.time()
+            while (self.run_isrunning()) and \
+                    (time.time() - start < timeoutsync):
+                time.sleep(1e-4)
+        return not self.run_isrunning()
 
     def tmux_start(self) -> None:
         self._errno_raiser(self.fps.TMUXstart(), 'tmux_start')
@@ -185,6 +185,7 @@ class FPS:
         self.fps.disconnect()
 
     def destroy(self) -> None:
+        self.disconnect()
         fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{self.name}.fps.shm'
         os.remove(fps_filepath)
 
@@ -219,16 +220,16 @@ class FPSManager:
         for fps_file in system_fps_files:
             self.find_fps(os.path.basename(fps_file).split('.')[0])
 
-        rm_keys = set()
+        non_matching_keys = set()
         for name, fpsobj in self.fps_cache.items():
             md = fpsobj.fps.md()
             kw_str = md.kwarray.strip(':')
             if (len(kw_str) == 0 or not any(
                     (fnmatch.fnmatch(kw, fps_keyword_glob)
                      for kw in kw_str.split(':')))):
-                rm_keys.add(name)
+                non_matching_keys.add(name)
 
-        for name in rm_keys:
+        for name in non_matching_keys:
             fps = self.fps_cache.pop(name)
             fps.disconnect()
 

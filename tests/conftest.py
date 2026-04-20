@@ -2,6 +2,8 @@ import pytest
 
 import os
 
+from pyMilk.interfacing import glib_loader_fix
+
 # Fetch autouse MILK fixtures from pyMilk
 pytest_plugins = [
         "tests.conftestaux.cacao_loop",

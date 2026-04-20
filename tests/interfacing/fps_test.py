@@ -4,6 +4,44 @@ import os
 from pyMilk.interfacing import fps
 
 
+def test_fps_errno_raiser():
+    f = fps.FPS.create('some_name')
+
+    f._errno_raiser(0, 'info')
+
+    with pytest.raises(fps.FPSErrnoError):
+        f._errno_raiser(1, 'error 1')
+
+    f.destroy()
+
+
+def test_fps_keyerrors():
+    f = fps.FPS.create('some_name')
+
+    # Successful get on trivial FPS
+    assert f['Name'] == 'some_name'
+
+    with pytest.raises(ValueError):
+        f['no_param']
+
+    with pytest.raises(ValueError):
+        f['no_param_2'] = 1.0
+
+    f.destroy()
+
+
+def test_fps_overwrite():
+    with pytest.raises(fps.FPSDoesntExistError):
+        f = fps.FPS('some_name')
+
+    f = fps.FPS.create('some_name')
+    with pytest.raises(fps.FPSOverrideError):
+        f = fps.FPS.create('some_name')
+
+    f2 = fps.FPS.create('some_name', True)
+    f2.destroy()
+
+
 def test_smart_fps_instantiation():
 
     class A(fps.SmartAttributesFPS):
@@ -64,6 +102,16 @@ def test_smart_fps_instantiation():
     g.gain = 3.1415
     assert g.gain == pytest.approx(3.1415)
 
+    class H(fps.SmartAttributesFPS):
+        gain: float
+        _DICT_METADATA = {
+                'gain': ('toto', fps.FPS_type.FLOAT32,
+                         fps.FPS_flags.DEFAULT_INPUT, 'an_extra_argument')
+        }
+
+    with pytest.raises(fps.SmartFPSInitError):
+        h = H.create('another_uniquename')
+
 
 def test_smart_fps_find_annotations_cannot_be_overridden():
 
@@ -93,6 +141,16 @@ def fixt_dumb_fps():
     yield a
 
     a.destroy()
+
+
+def test_pass_data(fixt_dumb_fps):
+    a = fixt_dumb_fps
+    a.add_param('abc', 'abcComment', fps.FPS_type.INT32,
+                fps.FPS_flags.DEFAULT_INPUT)
+    a['abc'] = 1
+
+    b = fps.FPS(a.name)
+    assert b['abc'] == 1
 
 
 @pytest.fixture
@@ -129,7 +187,7 @@ def fixt_smart_fps_properties():
     a.destroy()
 
 
-def test_downcasting(fixt_smart_fps_properties):
+def test_smart_to_dumb(fixt_smart_fps_properties):
     a = fixt_smart_fps_properties
     a.i4 = 12345
 
@@ -138,6 +196,13 @@ def test_downcasting(fixt_smart_fps_properties):
         _ = f.i4
 
     assert f['i4'] == 12345
+
+
+def test_downcasting(fixt_smart_fps_properties):
+    a = fixt_smart_fps_properties
+    a.i4 = 12345
+
+    f = fps.FPS(a.name)
 
     f_as_a = type(a).smartfps_downcast(f)
     assert f_as_a.i4 == 12345
@@ -194,13 +259,31 @@ def test_smart_fps_type_validation(fixt_smart_fps_properties):
     fps = fixt_smart_fps_properties
 
     # Test invalid type assignments
-    with pytest.raises(ValueError):
-        fps.i4 = "not integer-able"
-    with pytest.raises(ValueError):
-        fps.f4 = "not float-able"
-
-    fps.s = 42
-    assert fps.s == '42'  # 'Dis JS or what?
+    from pyMilk import IMPLEMENTATION, PY11_MILK1, NB_MILK1
+    if IMPLEMENTATION == NB_MILK1:
+        with pytest.raises(
+                RuntimeError
+        ):  # version change: ValueError on pybind, RuntimeError on nanobind
+            fps.i4 = "not integer-able"
+        with pytest.raises(
+                RuntimeError
+        ):  # version change: ValueError on pybind, RuntimeError on nanobind
+            fps.f4 = "not float-able"
+        with pytest.raises(RuntimeError):
+            fps.s = 42
+    elif IMPLEMENTATION == PY11_MILK1:
+        with pytest.raises(
+                ValueError
+        ):  # version change: ValueError on pybind, RuntimeError on nanobind
+            fps.i4 = "not integer-able"
+        with pytest.raises(
+                ValueError
+        ):  # version change: ValueError on pybind, RuntimeError on nanobind
+            fps.f4 = "not float-able"
+        fps.s = 42
+        assert fps.s == '42'
+    else:
+        raise ValueError('pyMilk IMPLEMENTATION ???')
 
 
 def test_smart_fps_concurrent_access():
@@ -277,3 +360,12 @@ def test_smart_fps_auto():
     # TODO breakpoint() here and figure out the interaction with milk-fpsCTRL.
 
     f.destroy()
+
+
+def test_metadata_mot_mappable():
+
+    class NewFPS(fps.SmartAttributesFPSAutoMetadata):
+        gain: None
+
+    with pytest.raises(fps.SmartFPSInitError):
+        f = NewFPS.create('xxxx')
