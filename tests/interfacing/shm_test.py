@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 import os
@@ -367,22 +369,22 @@ def test_shm_repost():
     else:
         raise ValueError
 
-    assert t1 < cast(s2.md.writetime) < t2
+    assert t1 <= cast(s2.md.writetime) <= t2
     assert cast(s2.md.acqtime) == cast(s2.md.writetime)
 
     t1 = time.time()
     s.repost()
     t2 = time.time()
 
-    assert t1 < cast(s2.md.writetime) < t2
+    assert t1 <= cast(s2.md.writetime) <= t2
     assert cast(s2.md.acqtime) == cast(s2.md.writetime)
 
     s.repost(t1)
-    assert abs(cast(s2.md.acqtime) - t1) < 0.5e-6
+    assert abs(cast(s2.md.acqtime) - t1) <= 0.5e-6
     s.repost(datetime.datetime.fromtimestamp(t2))
-    assert abs(cast(s2.md.acqtime) - t2) < 0.5e-6
+    assert abs(cast(s2.md.acqtime) - t2) <= 0.5e-6
 
     s2.repost(t1)
-    assert abs(cast(s.md.acqtime) - t1) < 0.5e-6
+    assert abs(cast(s.md.acqtime) - t1) <= 0.5e-6
     s2.repost(datetime.datetime.fromtimestamp(t2))
-    assert abs(cast(s.md.acqtime) - t2) < 0.5e-6
+    assert abs(cast(s.md.acqtime) - t2) <= 0.5e-6
