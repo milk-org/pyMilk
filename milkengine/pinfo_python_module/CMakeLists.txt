@@ -13,7 +13,12 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # PYBIND11
 # =======================================
 set(PYBIND11_FINDPYTHON ON)
-find_package(pybind11)
+execute_process(
+  COMMAND ${PYTHON_EXECUTABLE} -m pybind11 --cmakedir
+  OUTPUT_VARIABLE pybind11_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+find_package(pybind11 REQUIRED HINTS ${pybind11_DIR})
 pybind11_add_module(${LIBNAME} ${LIBNAME}.cpp)
 
 
