@@ -27,6 +27,7 @@ import time
 import glob
 
 _CORES = os.sched_getaffinity(0)
+from . import glib_loader_fix
 from pyMilk.FpsWrap import fps as CPTFPS, FPS_type, FPS_flags
 
 os.sched_setaffinity(0, _CORES)

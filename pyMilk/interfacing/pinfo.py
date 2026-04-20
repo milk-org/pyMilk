@@ -12,6 +12,7 @@ TODO: would be much nice if we had a binding of the enums for CTRLval, etc.
 '''
 
 if not typ.TYPE_CHECKING:
+    from . import glib_loader_fix
     from ..ProcessInfoWrap import processinfo as ProcessInfo
 else:
 
