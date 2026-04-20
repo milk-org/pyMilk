@@ -431,10 +431,16 @@ class SmartAttributesFPSAutoMetadata(SmartAttributesFPS):
     '''
     _cls_metadata_is_init: typ.ClassVar[bool] = False
     _ANNOTATION_TYPE_MAPPER: typ.ClassVar = {
+            # We maintain the string definitions for older python versions
+            # Where annotations contains string annotations only.
             bool: FPS_type.ONOFF,
+            'bool': FPS_type.ONOFF,
             int: FPS_type.INT64,
+            'int': FPS_type.INT64,
             float: FPS_type.FLOAT64,
+            'float': FPS_type.FLOAT64,
             str: FPS_type.STRING,
+            'str': FPS_type.STRING,
     }
 
     _T_Subclass = typ.TypeVar('_T_Subclass',
