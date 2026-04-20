@@ -2,7 +2,10 @@ import os, shutil, pathlib
 
 import pytest
 
-from importlib.resources import files
+try:
+    from importlib.resources import files
+except ImportError:
+    from importlib_resources import files
 import subprocess as sproc
 
 import tests  # should be the pytest file tree root
