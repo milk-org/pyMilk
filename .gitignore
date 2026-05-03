@@ -23,3 +23,5 @@ gcov_html/
 
 # Eggs
 .eggs/
+
+pyrightconfig.json
