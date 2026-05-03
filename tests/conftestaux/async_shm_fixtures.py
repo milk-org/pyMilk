@@ -1,6 +1,9 @@
 import multiprocessing
 
-multiprocessing.set_start_method('fork')
+try:
+    multiprocessing.set_start_method('spawn')
+except RuntimeError:
+    pass
 
 import time
 import numpy as np
@@ -8,11 +11,61 @@ import pytest
 
 from pyMilk.interfacing.shm import SHM
 
-multiprocessing.Event
+import typing as typ
+if typ.TYPE_CHECKING:
+    from multiprocessing.synchronize import Event as T_Event
 
 
-def _thread_func_pingpong(shm_toprocess: SHM, shm_fromprocess: SHM,
-                          delay: float, evt) -> None:
+def _sproc_serve_external_shm(name: str, shape: tuple[int, ...],
+                              nptype: np.typing.DTypeLike, location: int,
+                              event: T_Event):
+    s = SHM(name, (shape, nptype), location=location)
+    event.wait()
+
+
+@pytest.fixture
+def serve_external_shm(request):
+    name: str
+    shape: tuple[int, ...]
+    nptype: np.typing.DTypeLike
+    location: int
+
+    name, shape, nptype, location = request.param
+
+    try:
+        s = SHM(name)
+        s.destroy()
+    except:
+        pass
+
+    event = multiprocessing.Event()
+    subprocess = multiprocessing.Process(
+            target=_sproc_serve_external_shm,
+            args=(name, shape, nptype, location, event), daemon=False)
+    subprocess.start()
+
+    time.sleep(1.0)
+
+    while True:
+        time.sleep(0.01)
+        try:
+            s = SHM(name)
+            break
+        except:
+            pass
+
+    yield s
+
+    event.set()
+    subprocess.join()
+    #s.destroy()
+
+
+def _thread_func_pingpong(toprocess_name: str, fromprocess_name: str, shape,
+                          dtype, location: int, delay: float, evt) -> None:
+    shm_toprocess = SHM(toprocess_name)
+    shm_fromprocess = SHM(fromprocess_name)
+
     shm_toprocess._checkGrabSemaphore()
     shm_toprocess.IMAGE.semflush(shm_toprocess.semID)
 
@@ -37,8 +90,9 @@ def _thread_func_pingpong(shm_toprocess: SHM, shm_fromprocess: SHM,
         shm_fromprocess.set_data(dat + 1)
 
 
-def _thread_func_looper(shm_toprocess: SHM, shm_fromprocess: SHM, delay: float,
-                        evt) -> None:
+def _thread_func_looper(toprocess_name: str, fromprocess_name: str, shape,
+                        dtype, location: int, delay: float, evt) -> None:
+    shm_fromprocess = SHM(fromprocess_name)
     dat = shm_fromprocess.get_data()
     ii = -1
     while True:
@@ -50,9 +104,11 @@ def _thread_func_looper(shm_toprocess: SHM, shm_fromprocess: SHM, delay: float,
         shm_fromprocess.set_data(dat)
 
 
-def _thread_func_looper_with_forceful_recreation(shm_toprocess: SHM,
-                                                 shm_fromprocess: SHM,
+def _thread_func_looper_with_forceful_recreation(toprocess_name: str,
+                                                 fromprocess_name: str, shape,
+                                                 dtype, location: int,
                                                  delay: float, evt) -> None:
+    shm_fromprocess = SHM(fromprocess_name)
     dat = shm_fromprocess.get_data()
     ii = -1
     while True:
@@ -64,25 +120,29 @@ def _thread_func_looper_with_forceful_recreation(shm_toprocess: SHM,
         time.sleep(delay)
         shm_fromprocess.close()
         shm_fromprocess = SHM(
-                shm_fromprocess.FNAME,
+                fromprocess_name,
                 dat)  # I count that this induces a set_data and sempost
 
 
-def _thread_func_create_kill_recreate(shm_toprocess: SHM, shm_fromprocess: SHM,
-                                      delay: float, evt) -> None:
+def _thread_func_create_kill_recreate(toprocess_name: str,
+                                      fromprocess_name: str, shape, dtype,
+                                      location: int, delay: float,
+                                      evt) -> None:
+    shm_toprocess = SHM(toprocess_name)
+    shm_fromprocess = SHM(fromprocess_name)
     time.sleep(0.1)  # be sure we got time to instantiate in main process
     shm_toprocess.repost()
     print(f'orig -- {shm_toprocess.IMAGE.md.inode}')
     time.sleep(0.1)
-    shm_toprocess = SHM(shm_toprocess.FNAME,
-                        (shm_toprocess.shape, shm_toprocess.nptype))
+    shm_toprocess = SHM(toprocess_name, (shape, dtype), location=location)
     shm_fromprocess.repost()
     print(f'recreated -- {shm_toprocess.IMAGE.md.inode}')
     time.sleep(0.1)
     shm_toprocess.repost()
 
     time.sleep(0.1)
-    shm_toprocess = SHM(shm_toprocess.FNAME, ((5, 2, 3), np.int32))
+    shm_toprocess = SHM(toprocess_name, ((5, 2, 3), np.int32),
+                        location=location)
     shm_fromprocess.repost()
     print(f'recreated -- {shm_toprocess.IMAGE.md.inode}')
     time.sleep(0.1)
@@ -129,8 +189,9 @@ def subfixture(request, subprocess_callable, location=-1):
     # because the semID issued is identical !
     # Also completely nuts to copy the struct, would be much better to pass name, shape, dtype !!
     subprocess = multiprocessing.Process(
-            target=subprocess_callable, args=(shm_toprocess, shm_fromprocess,
-                                              delay, exit_event), daemon=False)
+            target=subprocess_callable,
+            args=(prefix + '_toprocess', prefix + '_fromprocess', shape, dtype,
+                  location, delay, exit_event), daemon=False)
     subprocess.start()
 
     shm_toprocess._checkGrabSemaphore()
