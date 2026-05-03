@@ -41,11 +41,10 @@ script-files = [
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",
-    "--ignore=tests/mains",
+    "--ignore=tests/mains", # this is the correct one, not the one in nanobind branch !
 ]
 
 [tool.pyright]
-extraPaths = ["/home/vdeo/src/swmain",] # Need to list scexao's pip install -e packages...
 typeCheckingMode = "basic" # off | basic | standard | strict # Look there https://github.com/microsoft/pyright/blob/main/docs/configuration.md
 include = ["pyMilk"]
 exclude = ["build/",
