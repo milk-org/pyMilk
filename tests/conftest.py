@@ -9,6 +9,7 @@ pytest_plugins = [
         "tests.conftestaux.cacao_loop",
         "tests.conftestaux.milk",
         "tests.conftestaux.coverage",
+        "tests.conftestaux.async_shm_fixtures",
 ]
 
 
