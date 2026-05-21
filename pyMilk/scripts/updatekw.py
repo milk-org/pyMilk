@@ -16,17 +16,7 @@ from docopt import docopt
 from pyMilk.interfacing.shm import SHM
 
 
-def main(shm_name: str, kw_name: str, kw_value: str):
-
-    shm = SHM(shm_name)
-    try:
-        shm.update_keyword(kw_name, kw_value)
-    except:
-        shm.set_keywords({kw_name: kw_value})
-
-
-if __name__ == "__main__":
-
+def main():
     args = docopt(__doc__)
     shm_name = args["<shm_name>"]
     kw_name = args["<kw_name>"]
@@ -36,4 +26,8 @@ if __name__ == "__main__":
     except:
         pass
 
-    main(shm_name, kw_name, kw_value)
+    shm = SHM(shm_name)
+    try:
+        shm.update_keyword(kw_name, kw_value)
+    except:
+        shm.set_keywords({kw_name: kw_value})

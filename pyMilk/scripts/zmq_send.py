@@ -63,7 +63,7 @@ def zmq_send_loop(host_port: tuple[str, int], shm_name: str, timeout: float,
         counter += 1
 
 
-if __name__ == "__main__":
+def main():
     # Parse
     from docopt import docopt
     doc = docopt(__doc__)
@@ -82,3 +82,7 @@ if __name__ == "__main__":
 
     zmq_send_loop((host, port), shm_name, timeout, skip=skip,
                   throttle_sec=throttle_sec)
+
+
+if __name__ == "__main__":
+    main()

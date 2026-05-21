@@ -19,7 +19,9 @@ def test_milk_shm_dir_fixture():
 def test_cwd_to_temp_fixture():
     cwd = os.getcwd()
 
-    assert cwd.startswith('/tmp')
+    assert cwd.startswith(
+            '/tmp'
+    ) or '/tmp/' in cwd  # nox will nest a ..../tmp/... under the nox session dir.
     # last dir made by the fixture...
     # if other fixtures change cwd further, they should also revert and also not be autouse.
     assert cwd.endswith('pytest_dont_use_for_anything0')
