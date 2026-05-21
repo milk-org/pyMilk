@@ -25,20 +25,19 @@ dependencies = [
 [tool.setuptools.packages.find]
 include=["pyMilk*"]
 
-[tool.setuptools]
-script-files = [
-                "pyMilk/visual/shmPlot.py",
-                "pyMilk/visual/shmImshow.py",
-                "pyMilk/scripts/zmq_send.py",
-                "pyMilk/scripts/zmq_recv.py",
-                "pyMilk/scripts/updatekw",
-                "pyMilk/scripts/creashmim",
-                "pyMilk/visual/shmTermshow.py"
-]
+[project.scripts]
+shmPlot = "pyMilk.visual.shmPlot:main"
+shmImshow = "pyMilk.visual.shmImshow:main"
+shmTermshow = "pyMilk.visual.shmTermshow:main"
+zmq_send = "pyMilk.scripts.zmq_send:main"
+zmq_recv = "pyMilk.scripts.zmq_recv:main"
+updatekw = "pyMilk.scripts.updatekw:main"
+creashmim = "pyMilk.scripts.creashmim:main"
 
 
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 addopts = [
     "--import-mode=importlib",
     "--ignore=mains/*",

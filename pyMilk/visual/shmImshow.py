@@ -25,6 +25,11 @@ from pyqtgraph import QtGui as QtG, QtCore as QtC, QtWidgets as QtW
 
 from pyMilk.interfacing.shm import SHM
 
+try:  # moved depending on Qt version
+    QShortcut = QtW.QShortcut
+except:
+    QShortcut = QtG.QShortcut
+
 SYMCODE_TRANS = [
         QtG.QTransform(0, 1, 1, 0, 0, 0),
         QtG.QTransform(0, 1, -1, 0, 0, 0),
@@ -119,7 +124,7 @@ class ShmImshowClass:
 
         # Create and bind the shorcuts
         for (key, func) in shortcut_descr:
-            tmp = QtW.QShortcut(QtG.QKeySequence(key), self.win)
+            tmp = QShortcut(QtG.QKeySequence(key), self.win)
             tmp.activated.connect(func)
 
     def _printHelp(self) -> None:
@@ -186,7 +191,7 @@ class ShmImshowClass:
     def _toggle_hist_autoscale(self):
         self.hist_autoscale = not self.hist_autoscale
         if not self.hist_autoscale:
-            self.hist.setHistogramRange(*self.hist.getLevels())
+            self.hist.setHistogramRange(*self.hist.getLevels())  # type: ignore
 
     def update(self) -> None:
         self.grabData()
@@ -222,7 +227,7 @@ class ShmImshowClass:
         self.title.setText(self.titleStr + f' - {self.fps:.2f} FPS')
 
 
-if __name__ == "__main__":
+def main():
     # Parse
     from docopt import docopt
     doc = docopt(__doc__)
@@ -236,3 +241,7 @@ if __name__ == "__main__":
     plotter = ShmImshowClass(doc['<name>'], symcode=doc['-s'],
                              targetFps=doc['--fr'])
     app.exec_()
+
+
+if __name__ == "__main__":
+    main()
