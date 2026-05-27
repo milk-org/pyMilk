@@ -18,7 +18,6 @@
 
 /* Entry management */
 #include "fps_add_entry.h"
-#include "fps_SetParamCLIindex.h"
 
 /* Connection management */
 #include "fps_connect.h"

@@ -115,20 +115,8 @@ int function_parameter_print_info(
             const char *color_start = COLORRESET;
             const char *color_end   = COLORRESET;
 
-            if(fps->parray[pindex].cli_index >= 0)
-            {
-                color_start = COLORPRIMARY;
-            }
 
-            char cli_idx_str[8];
-            if(fps->parray[pindex].cli_index >= 0)
-            {
-                snprintf(cli_idx_str, 8, "%d", fps->parray[pindex].cli_index);
-            }
-            else
-            {
-                strcpy(cli_idx_str, "---");
-            }
+            char cli_idx_str[8] = "---";
 
             const char *display_keyword = fps->parray[pindex].keywordfull;
             int prefix_len = strlen(fps->md->name);
@@ -136,7 +124,7 @@ int function_parameter_print_info(
                 display_keyword += prefix_len + 1;
             }
 
-            printf("%4s %s%-*s%s %12s %*s %8lu %s\n",
+            printf("%4s %s%-*s%s %12s %*s %s\n",
                    cli_idx_str,
                    color_start,
                    kw_width,
@@ -145,7 +133,6 @@ int function_parameter_print_info(
                    type_str,
                    val_width,
                    valstring,
-                   fps->parray[pindex].value_cnt,
                    fps->parray[pindex].description);
 
             if (show_info && fps->parray[pindex].type == FPTYPE_STREAMNAME) {
