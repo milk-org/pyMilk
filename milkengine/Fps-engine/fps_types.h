@@ -319,8 +319,6 @@ typedef struct
     } info;
 
     long cnt0;
-    uint64_t value_cnt;
-    int cli_index;
 } FUNCTION_PARAMETER;
 
 /* ===== FPS metadata and main struct ===== */
@@ -380,9 +378,6 @@ typedef struct
 
     char description[FPS_DESCR_STRMAXLEN];
 
-    char pad_for_future_version_1[8192];
-    char pad_for_future_version_2[512];
-
     // keyword array, convenient to classify/sort FPSs
     // Upon FPS creation by function_parameter_struct_create, keywordarray is imported from env variable FPS_KEYWORDARRAY
     // syntax is ":keyw0:keyw1:keyw2:"
@@ -405,8 +400,6 @@ typedef struct
     char pname[FPS_PNAME_STRMAXLEN]; // example: pname
     char callprogname[FPS_CALLPROGNAME_STRMAXLEN];
     char callfuncname[FPS_CALLFUNCNAME_STRMAXLEN];
-
-    char pad_for_future_version_3[100];
 
     char nameindexW[16][10]; // subnames
     int  NBnameindex;        // example: 2
@@ -433,8 +426,6 @@ typedef struct
     uint64_t confwaitus;
 
     uint32_t status; // conf and process status
-
-    uint64_t future_use_1;
 
     // size of parameter array (= max number of parameter supported)
     long NBparamMAX;

@@ -98,7 +98,6 @@ errno_t functionparameter_SetParamValue_INT64(
 {
     int fpsi = functionparameter_GetParamIndex(fps, paramname);
     fps->parray[fpsi].val.i64[0] = value;
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -211,7 +210,6 @@ errno_t functionparameter_SetParamValue_UINT64(
 {
     int fpsi = functionparameter_GetParamIndex(fps, paramname);
     fps->parray[fpsi].val.ui64[0] = value;
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -274,7 +272,6 @@ errno_t functionparameter_SetParamValue_INT32(
 {
     int fpsi = functionparameter_GetParamIndex(fps, paramname);
     fps->parray[fpsi].val.i32[0] = value;
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -337,7 +334,6 @@ errno_t functionparameter_SetParamValue_UINT32(
 {
     int fpsi = functionparameter_GetParamIndex(fps, paramname);
     fps->parray[fpsi].val.ui32[0] = value;
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -400,7 +396,6 @@ errno_t functionparameter_SetParamValue_FLOAT64(
 {
     int fpsi = functionparameter_GetParamIndex(fps, paramname);
     fps->parray[fpsi].val.f64[0] = value;
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -463,7 +458,6 @@ int functionparameter_SetParamValue_FLOAT32(
 {
     int fpsi = functionparameter_GetParamIndex(fps, paramname);
     fps->parray[fpsi].val.f32[0] = value;
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -539,8 +533,6 @@ int functionparameter_SetParamValue_TIMESPEC(
     fps->parray[fpsi].val.ts[0].tv_sec  = valuesec;
     fps->parray[fpsi].val.ts[0].tv_nsec = valuensec;
 
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
-
     return EXIT_SUCCESS;
 }
 
@@ -601,7 +593,6 @@ int functionparameter_SetParamValue_STRING(
     strncpy(fps->parray[fpsi].val.string[0],
             stringvalue,
             FUNCTION_PARAMETER_STRMAXLEN - 1);
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
@@ -663,8 +654,6 @@ int functionparameter_SetParamValue_ONOFF(
         fps->parray[fpsi].fpflag &= ~FPFLAG_ONOFF;
         fps->parray[fpsi].val.i64[0] = 0;
     }
-
-    fps->parray[fpsi].cnt0++; fps->parray[fpsi].value_cnt++;
 
     return EXIT_SUCCESS;
 }
