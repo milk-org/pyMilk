@@ -170,6 +170,7 @@ class SHM:
 
         self.semID: int | None = None
         self.location = location
+        self.shared = shared
         self.symcode = (
                 symcode  # Handle image symetries; 0-7, see pyMilk.util.img_shapes
         )
@@ -247,6 +248,9 @@ class SHM:
                                                      self.triDimState).shape
 
     def _attempt_autorelink_if_needed(self) -> None:
+        if not self.shared:
+            return
+
         if self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino:
             return
 
@@ -338,7 +342,8 @@ class SHM:
     def destroy(self) -> None:
         # Do not destroy if the inode is not owned anymore.
         if self.IMAGE.used and \
-                self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino:
+                (self.shared is False or
+                self.IMAGE.md.inode == os.stat(self.FILEPATH).st_ino):
             self.IMAGE.destroy()
 
     '''

@@ -3,11 +3,6 @@ import pytest
 import numpy as np
 
 from pyMilk.interfacing.shm import SHM
-
-from ..conftestaux.async_shm_fixtures import (
-        threaded_shm_data_pingpong, threaded_shm_poster,
-        threaded_shm_poster_recreator, threaded_shm_create_kill_recreate,
-        threaded_shm_data_pingpong_gpu)
 '''
 CAUTION
 

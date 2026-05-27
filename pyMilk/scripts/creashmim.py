@@ -39,7 +39,8 @@ TYPE_DICT = {
         'u64': np.uint64,
 }
 
-if __name__ == "__main__":
+
+def main():
     args = docopt(__doc__)
 
     name = args['<name>']

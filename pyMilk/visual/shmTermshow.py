@@ -145,7 +145,7 @@ class ShmTermshowClass:
             time.sleep(1. / self.targetFps)
 
 
-if __name__ == "__main__":
+def main():
     # Parse
     from docopt import docopt
     doc = docopt(__doc__)
@@ -157,3 +157,7 @@ if __name__ == "__main__":
                                targetFps=doc['--fr'], bin_fac=doc['-z'])
 
     plotter.run()
+
+
+if __name__ == "__main__":
+    main()

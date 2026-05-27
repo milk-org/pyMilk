@@ -11,7 +11,6 @@ Options:
     -s=<name_OR>  name override - reassign the SHM with a different name
 '''
 from __future__ import annotations
-
 '''bash
 IP=""
 for CH in 00 01 02 03 04 05 06 07 08 09 10 11; do
@@ -74,7 +73,7 @@ def zmq_recv_loop(host_port: tuple[str, int], topic: str, out_name: str):
         out_shm.set_keywords(keywords)
 
 
-if __name__ == "__main__":
+def main():
     # Parse
     from docopt import docopt
     doc = docopt(__doc__)
@@ -89,3 +88,7 @@ if __name__ == "__main__":
         out_name = topic
 
     zmq_recv_loop((host, port), topic, out_name)
+
+
+if __name__ == "__main__":
+    main()

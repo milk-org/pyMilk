@@ -1,5 +1,6 @@
 import os, sys
 import nox
+import shutil
 
 nox.options.error_on_missing_interpreters = False
 '''
@@ -46,9 +47,17 @@ def tests_editable_inner_outer(session: nox.Session):
 
     # Run tests from outside the project root
     project_dir = os.path.abspath(os.getcwd())
-    session.chdir('/tmp')
-    with session.chdir(session.create_tmp()):
-        session.run("pytest", project_dir)
+    os.makedirs('/tmp/pytest_workspace', exist_ok=True)
+
+    # This gymnastics of making "tests" importable has been rendered necessary
+    # When switching pytest multiprocessing from fork to spawn
+    # (as otherwise necessary for CUDA)
+    tmp_dir = session.create_tmp()
+    session.chdir(tmp_dir)
+    shutil.copytree(project_dir + '/tests', tmp_dir + '/tests')
+    with session.chdir(tmp_dir):
+        session.run("pytest", '-x', '--pdb', project_dir)
+    shutil.rmtree(tmp_dir + '/tests')
 
 
 @nox.session
@@ -65,9 +74,13 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     # Change cwd to something else...
     # Otherwise name collision with the source folder, rather than the install in the venv.
     project_dir = os.path.abspath(os.getcwd())
-    session.chdir('/tmp')
-    with session.chdir(session.create_tmp()):
+
+    tmp_dir = session.create_tmp()
+    session.chdir(tmp_dir)
+    shutil.copytree(project_dir + '/tests', tmp_dir + '/tests')
+    with session.chdir(tmp_dir):
         session.run("pytest", project_dir)
+    shutil.rmtree(tmp_dir + '/tests')
 
 
 @nox.session(default=False)
