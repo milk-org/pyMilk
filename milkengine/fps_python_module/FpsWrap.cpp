@@ -307,6 +307,26 @@ Return:
 Return:
     ret      [out]: error code
 )pbdoc")
+
+        .def("TMUXstart",
+             &pyFps::TMUXstart,
+             R"pbdoc(Initialize tmux session for FPS
+
+Creates a tmux session with ctrl, conf and run windows.
+
+Return:
+    ret      [out]: error code
+)pbdoc")
+
+        .def("TMUXstop",
+             &pyFps::TMUXstop,
+             R"pbdoc(Kill tmux session for FPS
+
+Sends SIGINT to each window then kills the session.
+
+Return:
+    ret      [out]: error code
+)pbdoc")
         // Test if CONF process is running
 
         .def_prop_ro(
