@@ -106,7 +106,6 @@ def tests_run_coverage(session: nox.Session):
     os.makedirs('gcov_html', exist_ok=True)
     session.run(
             'gcovr',
-            '--verbose',
             '-r',
             '.',
             '--exclude',

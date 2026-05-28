@@ -8,8 +8,11 @@ from pyMilk.interfacing.shm import SHM, check_SHM_name
 from pyMilk import errors
 
 
-@pytest.mark.parametrize('shape', [(3, ), (2, 3), (2, 3, 4), (3, 4, 5),
-                                   (5, 6, 7)])
+@pytest.mark.parametrize('shape', [
+        (3, ), (2, 3), (2, 3, 4), (3, 4, 5), (5, 6, 7), (1, ), (1, 1),
+        (1, 1, 1), (1, 5), (5, 1), (1, 3, 5), (3, 1, 5), (3, 5, 1), (1, 1, 5),
+        (1, 5, 1), (5, 1, 1)
+])  # test with a lot of singleton dimensions as well, but no autosqueeze
 def test_data_conservation(shape: tuple[int, ...]):
 
     for sym in range(8):
@@ -18,7 +21,8 @@ def test_data_conservation(shape: tuple[int, ...]):
 
             shm_write = SHM("pyMilk_autotest", data, symcode=sym, triDim=tri,
                             location=-1, shared=True)
-            shm_read = SHM("pyMilk_autotest", symcode=sym, triDim=tri)
+            shm_read = SHM("pyMilk_autotest", symcode=sym, triDim=tri,
+                           autoSqueeze=False)
 
             dd = shm_read.get_data()
             assert (shm_write.shape == shm_read.shape
@@ -36,6 +40,76 @@ def test_data_conservation(shape: tuple[int, ...]):
 
             shm_read.close()
             shm_write.destroy()
+
+
+@pytest.mark.parametrize('shape', [(1, ), (1, 1), (1, 1, 1), (1, 5), (5, 1),
+                                   (1, 3, 5), (3, 1, 5), (3, 5, 1), (1, 1, 5),
+                                   (1, 5, 1), (5, 1, 1)])
+def test_data_conservation_with_squeezing_dimensions(shape: tuple[int, ...]):
+
+    # for sym in range(8):
+    #    for tri in range(4): # sym / tri don't have the same meaning on create/read for squeezing SHMs...
+    #                           and it's most confusing.
+    sym, tri = 0, 0
+
+    data: np.ndarray = np.random.randn(*shape)  # type: ignore
+
+    shm_write = SHM("pyMilk_autotest", data, symcode=sym, triDim=tri,
+                    location=-1, shared=True)
+    shm_read = SHM("pyMilk_autotest", symcode=sym, triDim=tri)
+
+    dd = shm_read.get_data()
+    expected_shape = tuple((s for s in shape if s > 1))
+
+    print(shape, expected_shape)
+
+    assert (expected_shape == shm_read.shape),\
+            f"{shm_write.shape}, {shm_read.shape}, {sym}, {tri}"
+    assert (expected_shape == dd.shape),\
+            f"{expected_shape}, {dd.shape}, {sym}, {tri}"
+    assert (shm_write.shape_c == shm_read.shape_c),\
+            f"{shm_write.shape_c}, {shm_read.shape_c}"
+    assert np.all(np.abs(dd - data.squeeze()) < 1e-7),\
+            f"{shape}, {sym}, {tri}"
+
+    data_backw: np.ndarray = np.random.randn(*expected_shape)  # type: ignore
+
+    shm_read.set_data(data_backw)
+    dd2 = shm_write.get_data(check=False)
+    assert np.all(np.abs(dd2.squeeze() - data_backw) < 1e-7), \
+                            f"{shape}, {sym}, {tri}"
+
+    shm_read.close()
+    shm_write.destroy()
+
+
+@pytest.mark.parametrize('dtype1', [
+        np.int8, np.uint8, np.int16, np.uint16, np.int32, np.uint32, np.int64,
+        np.uint64, np.float32, np.float64
+])
+@pytest.mark.parametrize('dtype2', [
+        np.int8, np.uint8, np.int16, np.uint16, np.int32, np.uint32, np.int64,
+        np.uint64, np.float32, np.float64
+])
+def test_wrong_type(dtype1: np.typing.DTypeLike, dtype2: np.typing.DTypeLike):
+    s = SHM('a', ((2, 3), dtype1))
+    data = (np.random.randn(2, 3) * 100).astype(dtype2)
+    if dtype1 == dtype2:
+        s.set_data(data)  # nofail
+    else:
+        with pytest.raises(ValueError):
+            s.set_data(data)  # Wrong type
+
+    s.set_data(data, check_dt=True)
+
+
+def test_wrong_shape():
+    s = SHM('a', ((2, 3), np.float32))
+    with pytest.raises(ValueError):
+        s.set_data(np.zeros((2, 2), np.float32))  # Wrong shape
+
+    with pytest.raises(ValueError):
+        s.set_data(np.zeros((2, 3, 1), np.float32))  # Wrong number of axes
 
 
 def test_as_context_manager():

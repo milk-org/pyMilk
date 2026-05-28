@@ -2,6 +2,14 @@ import multiprocessing
 
 try:
     multiprocessing.set_start_method('spawn')
+    # Ensure the repo root is in sys.path so that spawned processes (which
+    # inherit sys.path via multiprocessing preparation data) can import
+    # tests.conftestaux.async_shm_fixtures to reconstruct pickled targets.
+    import sys as _sys, os as _os
+    _repo_root = _os.path.abspath(_os.path.join(__file__, '../../..'))
+    if _repo_root not in _sys.path:
+        _sys.path.insert(0, _repo_root)
+    del _sys, _os, _repo_root
 except RuntimeError:
     pass
 
@@ -187,7 +195,6 @@ def subfixture(request, subprocess_callable, location=-1):
 
     # Originally attempted with a threading.Thread, but that causes issues
     # because the semID issued is identical !
-    # Also completely nuts to copy the struct, would be much better to pass name, shape, dtype !!
     subprocess = multiprocessing.Process(
             target=subprocess_callable,
             args=(prefix + '_toprocess', prefix + '_fromprocess', shape, dtype,
