@@ -28,7 +28,13 @@ def test_data_conservation(shape: tuple[int, ...], location: int):
             shm_write.destroy()
 
 
-def test_shared_nonshared_overlap(location1: int = -1, location2: int = -1):
+@pytest.mark.parametrize('location1', [-1, 0])
+@pytest.mark.parametrize('location2', [-1, 0])
+def test_shared_nonshared_overlap(location1: int, location2: int):
+    from pyMilk.ImageStreamIOWrap import IMAGESTREAMIO_HAVE_CUDA
+    if ((location1 >= 0 or location2 >= 0) and not IMAGESTREAMIO_HAVE_CUDA):
+        pytest.skip("No CUDA -- skipping this test")
+
     data_shared: np.ndarray = np.random.randn(10, 20).astype(np.float32)
     data_private: np.ndarray = np.random.randn(10, 20).astype(np.float32)
     shm_shared_1 = SHM('shared_test', data_shared,

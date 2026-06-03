@@ -14,6 +14,7 @@ dependencies = [
   "docopt",
   "libtmux",
   "numpy",
+  # "cupy", # KEEP OPTIONAL
   "tqdm",
   "astropy",
 ]
@@ -42,6 +43,11 @@ addopts = [
     "--import-mode=importlib",
     "--ignore=mains/*",
 ]
+
+reportMissingImports = true
+reportMissingTypeStubs = false
+pythonVersion = "3.10"
+pythonPlatform = "Linux"
 
 [tool.coverage.run]
 command_line = "-m pytest"

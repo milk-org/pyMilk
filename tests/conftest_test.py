@@ -6,6 +6,9 @@ in
 actually do their job.
 '''
 import os
+import pytest
+
+from pyMilk.interfacing.shm import IMAGESTREAMIO_HAVE_CUDA
 
 
 def test_milk_shm_dir_fixture():

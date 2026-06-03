@@ -6,10 +6,8 @@ from pyMilk.interfacing import glib_loader_fix
 
 # Fetch autouse MILK fixtures from pyMilk
 pytest_plugins = [
-        "tests.conftestaux.cacao_loop",
-        "tests.conftestaux.milk",
-        "tests.conftestaux.coverage",
-        "tests.conftestaux.async_shm_fixtures",
+        "tests.conftestaux.cacao_loop", "tests.conftestaux.milk",
+        "tests.conftestaux.coverage", "tests.conftestaux.async_shm_fixtures"
 ]
 
 

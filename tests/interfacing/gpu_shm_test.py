@@ -1,6 +1,7 @@
 import pytest
 
 import os
+import time
 
 import numpy as np
 
@@ -8,6 +9,12 @@ from pyMilk.interfacing.shm import SHM, check_SHM_name
 from pyMilk import errors
 
 from ..conftestaux.async_shm_fixtures import serve_external_shm
+
+from pyMilk.interfacing.shm import IMAGESTREAMIO_HAVE_CUDA
+if not IMAGESTREAMIO_HAVE_CUDA:
+    pytest.skip("Skipping GPU tests.", allow_module_level=True)
+
+import cupy as cp
 
 
 @pytest.mark.parametrize('data', [
@@ -73,3 +80,61 @@ def test_double_open_with_data_sanity():
 def test_external_process_serves_shm(serve_external_shm: SHM):
     # Nothing to test, the fixture already opened the local SHM and will close it.
     assert np.all(serve_external_shm.get_data() == 0.0)
+
+
+@pytest.mark.parametrize('serve_external_shm', [('gpu_test',
+                                                 (100, 200), np.float64, 0)],
+                         indirect=True)
+@pytest.mark.parametrize('overwrite_location', [-1, 0])
+def test_external_process_serves_shm_and_make_zombie(serve_external_shm: SHM,
+                                                     overwrite_location: int):
+    # Nothing to test, the fixture already opened the local SHM and will close it.
+    assert np.all(serve_external_shm.get_data() == 0.0)
+    z_data = serve_external_shm.get_data()
+
+    new_handle = SHM(serve_external_shm.FNAME)
+
+    overwrite = SHM(serve_external_shm.FNAME, z_data - 1,
+                    location=overwrite_location)
+
+    # We purposefully _disable_ autorelink_if_need
+    # Otherwise we'd just automatically relink to overwritecpu.
+    # But here we're testing that the zombie is staying alive
+
+    assert np.all(serve_external_shm.get_data(autorelink_if_need=False) == 0.0)
+    assert np.all(overwrite.get_data() == -1.0)
+
+    new_handle.set_data(z_data + 1, autorelink_if_need=False)
+    assert np.all(
+            serve_external_shm.get_data(autorelink_if_need=False) == +1.0)
+    assert np.all(overwrite.get_data() == -1.0)
+
+
+def test_cp_array_to_cpu_shm():
+    x_np = np.random.randn(123, 45).astype(np.float32)
+    x_cp = cp.array(-x_np)
+
+    s_cpu = SHM('x', x_np)
+
+    s_cpu.set_data(x_cp)
+
+    assert np.all(s_cpu.get_data() == -x_np)
+
+    s_cpu.destroy()
+
+
+def test_gpu_shm_from_np_cp():
+    x_np = np.random.randn(123, 45).astype(np.float32)
+    x_cp = cp.array(-x_np)
+
+    s_gpu = SHM('x', x_cp, location=0)
+    assert type(s_gpu.get_data(copy=False)) == cp.ndarray
+    assert np.all(s_gpu.get_data(copy=True) == -x_np)
+    assert np.all(s_gpu.get_data(copy=False) == x_cp)
+    s_gpu.destroy()
+
+    s_gpu = SHM('x', x_np, location=0)
+    assert np.all(s_gpu.get_data(copy=True) == x_np)
+    assert np.all(s_gpu.get_data(copy=False) == -x_cp)
+
+    s_gpu.destroy()
