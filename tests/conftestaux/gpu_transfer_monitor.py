@@ -48,6 +48,40 @@ import pytest
 # Locate the shared library relative to this file
 # ---------------------------------------------------------------------------
 
+
+def attempt_build_libcupti_spy():
+    import subprocess
+    """
+    Attempts to build the CUPTI spy library from tests/gpu_monitor/Makefile.
+    If the build fails, it will skip GPU transfer monitoring tests but not fail the session.
+    """
+    gpu_monitor_dir = Path(__file__).parent.parent / "gpu_monitor"
+
+    try:
+        # Run make to build libcupti_spy.so
+        subprocess.run(
+                ["make"],
+                cwd=gpu_monitor_dir,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=True,
+        )
+        print(f"Successfully built libcupti_spy.so from {gpu_monitor_dir}")
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Failed to build libcupti_spy.so from {gpu_monitor_dir}"
+              )
+        print(f"stdout: {e.stdout}")
+        print(f"stderr: {e.stderr}")
+    except FileNotFoundError:
+        print(f"Warning: make command not found or gpu_monitor directory not found at {gpu_monitor_dir}"
+              )
+    except subprocess.TimeoutExpired:
+        print(f"Warning: Building libcupti_spy.so timed out")
+    except Exception as e:
+        print(f"Warning: Unexpected error building libcupti_spy.so: {e}")
+
+
 _LIB_PATH = Path(__file__).parent.parent / "gpu_monitor" / "libcupti_spy.so"
 
 
@@ -56,6 +90,7 @@ class CuptiSpyUnavailable(RuntimeError):
 
 
 def _load_lib() -> ctypes.CDLL:
+    attempt_build_libcupti_spy()
 
     if not _LIB_PATH.exists():
         raise CuptiSpyUnavailable(
