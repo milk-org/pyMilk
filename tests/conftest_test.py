@@ -28,3 +28,55 @@ def test_cwd_to_temp_fixture():
     # last dir made by the fixture...
     # if other fixtures change cwd further, they should also revert and also not be autouse.
     assert cwd.endswith('pytest_dont_use_for_anything0')
+
+
+def _subprocess_function():
+    import numpy as np
+    from pyMilk.interfacing.shm import SHM
+    s = SHM('gpu', ((100, 100), np.float32), location=0)
+    for _ in range(100):
+        s.set_data(np.zeros((100, 100), np.float32))
+    s.destroy()
+
+
+def test_counts_in_subprocess():
+    if not IMAGESTREAMIO_HAVE_CUDA:
+        pytest.skip("No CUDA -- skipping this test")
+
+    import multiprocessing
+    from .conftestaux.gpu_transfer_monitor import count_subprocess_transfers
+
+    # Use 'spawn' so the child gets a clean CUDA context.
+    ctx = multiprocessing.get_context('spawn')
+
+    with count_subprocess_transfers() as (counts, spy):
+        p = ctx.Process(target=spy(_subprocess_function))
+        p.start()
+        p.join()
+        assert p.exitcode == 0, f"subprocess exited with code {p.exitcode}"
+
+    # _subprocess_function: 1 create (H→D init write) + 100 set_data H→D
+    assert counts.dtoh == 0
+    assert counts.htod == 101
+
+
+def test_counts_in_popen():
+    if not IMAGESTREAMIO_HAVE_CUDA:
+        pytest.skip("No CUDA -- skipping this test")
+
+    import subprocess, shlex
+    from .conftestaux.gpu_transfer_monitor import count_popen_transfers
+
+    with count_popen_transfers() as (counts, extra_env):
+        proc = subprocess.Popen(
+                shlex.
+                split('python -c "from pyMilk.interfacing.shm import SHM; import numpy as np; s = SHM(\'gpu\', ((10,20), np.float32),location=0); s.destroy()"'
+                      ), env={
+                              **os.environ,
+                              **extra_env
+                      })
+        proc.wait()
+
+    assert proc.returncode == 0
+    assert counts.dtoh == 0
+    assert counts.htod == 1

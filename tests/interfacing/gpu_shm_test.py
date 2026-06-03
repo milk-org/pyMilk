@@ -110,6 +110,27 @@ def test_external_process_serves_shm_and_make_zombie(serve_external_shm: SHM,
     assert np.all(overwrite.get_data() == -1.0)
 
 
+def test_no_gpu_memcpy():
+    from ..conftestaux.gpu_transfer_monitor import assert_no_gpu_host_transfers
+    with assert_no_gpu_host_transfers():
+        pass
+
+
+def test_yes_gpu_memcpy():
+    s = SHM('yolo', ((5, 10), np.int64), location=0)
+    from ..conftestaux.gpu_transfer_monitor import count_gpu_host_transfers
+    with count_gpu_host_transfers() as counts:
+        s.get_data()
+
+    assert counts.dtoh > 0
+    assert counts.htod == 0
+
+    with count_gpu_host_transfers() as counts:
+        s.set_data((np.random.randn(5, 10) * 100).astype(np.int64))
+    assert counts.dtoh == 0
+    assert counts.htod > 0
+
+
 def test_cp_array_to_cpu_shm():
     x_np = np.random.randn(123, 45).astype(np.float32)
     x_cp = cp.array(-x_np)
@@ -138,3 +159,51 @@ def test_gpu_shm_from_np_cp():
     assert np.all(s_gpu.get_data(copy=False) == -x_cp)
 
     s_gpu.destroy()
+
+
+def test_gpu_countcopy():
+    initializer_data = np.random.randn(123, 45, 67).astype(np.float32)
+    initializer_data.flat[0] = 0  # counter
+    s = SHM('test', initializer_data, location=0)
+    assert s.location == 0
+
+    from ..conftestaux.gpu_transfer_monitor import count_gpu_host_transfers
+
+    with count_gpu_host_transfers() as count:
+        t1 = time.time()
+        for _ in range(1_000):
+            cpu_data = s.get_data(copy=True)
+            cpu_data.flat[0] += 1
+            s.set_data(cpu_data)
+        print(f'Time in loop for test_gpu_zerocopy: {time.time() - t1:.6f} s')
+    assert count.dtoh == 1000
+    assert count.htod == 1000
+    assert s.get_data().flat[0] == 1000
+
+    s.destroy()
+
+
+def test_gpu_zerocopy():
+    # Big arrays:   PCI memcpy dominates, zerocopy is faster
+    # Small arrays: Driver calls to GPU dominate, zerocopy (on-device-copy but no PCI transfer) is slower.
+    initializer_data = np.random.randn(123, 45, 67).astype(np.float32)
+    initializer_data.flat[0] = 0  # counter
+    s = SHM('test', initializer_data, location=0)
+    assert s.location == 0
+
+    from ..conftestaux.gpu_transfer_monitor import count_gpu_host_transfers
+
+    s.set_data(initializer_data)
+    with count_gpu_host_transfers() as count:
+        t1 = time.time()
+        for _ in range(1_000):
+            gpu_data = s.get_data(copy=False)
+            gpu_data.flat[
+                    0] += 1.0  # This kernel launch costs time, but not what we're testing here.
+            s.set_data(gpu_data)
+        print(f'Time in loop for test_gpu_zerocopy: {time.time() - t1:.6f} s')
+    assert count.dtoh == 0
+    assert count.htod == 0
+    assert s.get_data().flat[0] == 1000
+
+    s.destroy()
