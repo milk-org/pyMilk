@@ -35,7 +35,10 @@ Credit for ImageStreamIOWrap pybind interface: A. Sevin
 from __future__ import annotations
 
 import typing as typ
+import numpy as np
+
 if typ.TYPE_CHECKING:
+    IMAGESTREAMIO_HAVE_CUDA: int
     KWType = str | int | float
     KWDict = dict[str, KWType]
     KWCommentDict = dict[str, tuple[KWType, str]]
@@ -47,12 +50,16 @@ if typ.TYPE_CHECKING:
     from types import TracebackType
     ExcTpl = typ.TypeVar('ExcTpl', bound=BaseException)
 
+    import numpy.typing as npt
+    import cupy as cp
+
+    xp_ndarray = typ.TypeVar('xp_ndarray', np.ndarray, cp.ndarray)
+
 from . import glib_loader_fix
-from pyMilk.ImageStreamIOWrap import Image, Image_kw, Image_md
+from pyMilk.ImageStreamIOWrap import Image, Image_kw, Image_md, IMAGESTREAMIO_HAVE_CUDA
+# FIXME all np calls... in case the data is a cp array ! Review img_shapes as well.
 
 import datetime
-import numpy as np
-import numpy.typing as npt
 
 import time
 
@@ -82,7 +89,7 @@ class SHM:
     def __init__(
             self,
             fname: str,
-            data: None | np.ndarray |
+            data: None | xp_ndarray |
             tuple[tuple[int, ...], npt.DTypeLike] = None,
             nbkw: int = 50,
             shared: bool | typ.Literal[0, 1] = True,
@@ -173,7 +180,7 @@ class SHM:
         self.shared = True  # can't be other with OpenIm...
         self.location = self.IMAGE.md.location
 
-    def _finalize_init_creationmode(self, data: np.ndarray |
+    def _finalize_init_creationmode(self, data: xp_ndarray |
                                     tuple[tuple[int, ...], npt.DTypeLike],
                                     location: int, shared: bool |
                                     typ.Literal[0, 1], nbkw: int):
@@ -545,7 +552,7 @@ class SHM:
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: typ.Literal[False] = False
-                 ) -> np.ndarray:
+                 ) -> xp_ndarray:
         ...
 
     @typ.overload
@@ -553,13 +560,13 @@ class SHM:
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: typ.Literal[True] = True
-                 ) -> np.ndarray | None:
+                 ) -> xp_ndarray | None:
         ...
 
     def get_data(self, check: bool = False, timeout: float | None = 5.0,
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
-                 return_none_on_timeout: bool = False) -> np.ndarray | None:
+                 return_none_on_timeout: bool = False) -> xp_ndarray | None:
         """
         Reads and returns the data part of the SHM file
         Parameters:
@@ -591,37 +598,23 @@ class SHM:
                     if return_none_on_timeout:
                         return None
 
-        if self.location >= 0:
-            if copy:
-                arr_sliced = self.IMAGE.copy()[self.readSlice]
-                if self.nDim == 2:
-                    return img_shapes.image_decode(arr_sliced, self.symcode)
-                elif self.nDim == 3:
-                    return img_shapes.full_cube_decode(
-                            arr_sliced,
-                            self.symcode,
-                            self.triDimState,
-                    )
-                else:
-                    return self.IMAGE.copy()[self.readSlice]
-            else:
-                raise AssertionError("copy=False not allowed on GPU.")
+        # FIXME ! image_decode, full_cube_decode don't have the same meaning
+        # in case of autoSqueeze collapsing dimensions.
+        # Should they apply before or after reducing dimensions??
+        arr_sliced = (self.IMAGE.copy()
+                      if copy else self.IMAGE.view())[self.readSlice]
+        if self.nDim == 2:
+            return img_shapes.image_decode(arr_sliced, self.symcode)
+        elif self.nDim == 3:
+            return img_shapes.full_cube_decode(
+                    arr_sliced,
+                    self.symcode,
+                    self.triDimState,
+            )
         else:
-            # This syntax is only allowed on CPU - segfaults if loc > 0
-            arr_sliced = (self.IMAGE.copy()
-                          if copy else self.IMAGE.view())[self.readSlice]
-            if self.nDim == 2:
-                return img_shapes.image_decode(arr_sliced, self.symcode)
-            elif self.nDim == 3:
-                return img_shapes.full_cube_decode(
-                        arr_sliced,
-                        self.symcode,
-                        self.triDimState,
-                )
-            else:
-                return arr_sliced
+            return arr_sliced
 
-    def set_data(self, data: np.ndarray, check_dt: bool = False,
+    def set_data(self, data: xp_ndarray, check_dt: bool = False,
                  autorelink_if_need: bool = False) -> None:
         """
         Upload new data to the SHM file.

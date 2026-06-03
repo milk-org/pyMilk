@@ -2,6 +2,8 @@ import pytest
 
 import os
 
+# Don't remove.
+# This must be done as early as possible... see in that file.
 from pyMilk.interfacing import glib_loader_fix
 
 # Fetch autouse MILK fixtures from pyMilk
@@ -10,6 +12,7 @@ pytest_plugins = [
         "tests.conftestaux.milk",
         "tests.conftestaux.coverage",
         "tests.conftestaux.async_shm_fixtures",
+        "tests.conftestaux.gpu_transfer_monitor",
 ]
 
 

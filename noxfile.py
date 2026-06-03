@@ -1,8 +1,58 @@
 import os, sys
 import nox
 import shutil
+import subprocess
+from pathlib import Path
 
 nox.options.error_on_missing_interpreters = False
+
+
+def _imagestreamio_has_cuda(session: nox.Session) -> bool:
+    result = subprocess.run(
+            [
+                    f"{session.bin}/python", "-c",
+                    "from pyMilk.interfacing.shm import IMAGESTREAMIO_HAVE_CUDA; raise SystemExit(not IMAGESTREAMIO_HAVE_CUDA)"
+            ],
+            capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def _cupy_package() -> str:
+    """Return the cupy wheel and the minimal NVRTC headers package for the installed CUDA version.
+
+    `cupy-cuda{N}x` is the fast pre-built wheel, but NVRTC needs compiler
+    headers at runtime to JIT-compile kernels.  Instead of pulling the full
+    toolkit via `cupy-cuda{N}x[ctk]`, we install only `nvidia-cuda-nvcc-cu{N}`
+    which is the single pip package that provides those headers — much smaller.
+
+    Falls back to plain 'cupy' if the CUDA version cannot be determined.
+    """
+    result = subprocess.run(["nvcc", "--version"], capture_output=True,
+                            text=True)
+    if result.returncode == 0:
+        for line in result.stdout.splitlines():
+            # e.g. "Cuda compilation tools, release 12.2, V12.2.140"
+            if "release" in line:
+                major = line.split("release")[1].strip().split(".")[0]
+                return f"cupy-cuda{major}x"
+    return "cupy"
+
+
+def _cuda_root() -> str | None:
+    result = subprocess.run(["which", "nvcc"], capture_output=True, text=True)
+    if result.returncode == 0:
+        # nvcc lives at $CUDA_ROOT/bin/nvcc
+        return str(Path(result.stdout.strip()).parent.parent)
+    return None
+
+
+def _set_cuda_env(session: nox.Session) -> None:
+    cuda_root = _cuda_root()
+    if cuda_root and not session.env.get("CUDA_PATH"):
+        session.env["CUDA_PATH"] = cuda_root
+
+
 '''
 I am investigating nox as an option to run the (some) tests with multiple "installation modes"
 In particular, with the dependency on libImageStreamIO.so and the building of the python
@@ -42,6 +92,10 @@ def tests_editable_inner_outer(session: nox.Session):
     session.install("-e", ".")
     #session.install("pyright") # why pyright twice ????
 
+    if _imagestreamio_has_cuda(session):
+        session.install(_cupy_package())
+        _set_cuda_env(session)
+
     # Run tests from inside the project root
     session.run("pytest")
 
@@ -71,6 +125,10 @@ def tests_non_editable_inner_and_outer(session: nox.Session):
     session.install("pytest")
     session.install(".")
 
+    if _imagestreamio_has_cuda(session):
+        session.install(_cupy_package())
+        _set_cuda_env(session)
+
     # Change cwd to something else...
     # Otherwise name collision with the source folder, rather than the install in the venv.
     project_dir = os.path.abspath(os.getcwd())
@@ -91,6 +149,10 @@ def tests_run_coverage(session: nox.Session):
     session.env['COVERAGE'] = 'ON'
     session.install('nanobind', 'setuptools', 'coverage', 'pytest')
     session.install('.')  # for dependencies only...
+
+    if _imagestreamio_has_cuda(session):
+        session.install(_cupy_package())
+        _set_cuda_env(session)
 
     session.run(*('python setup.py build_ext --inplace'.split()))
     print(os.path.abspath(os.getcwd()))

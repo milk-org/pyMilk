@@ -86,6 +86,10 @@ A CLI helper is also available to create streams from the shell:
 creashmim mystream 256 256 --type=f32 --kw=50
 ```
 
+### GPU Capability
+
+
+
 ### FPS — Function Parameter Structures
 
 The `FPS` class interfaces with CACAO parameter structures used to configure and control real-time processes.
