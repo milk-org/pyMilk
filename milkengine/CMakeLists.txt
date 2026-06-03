@@ -12,6 +12,10 @@ if(CMAKE_CUDA_COMPILER)
 	set(USE_CUDA ON CACHE BOOL "Build ImageStreamIO with CUDA" FORCE)
 endif()
 
+if(NOCUDA)
+	set(USE_CUDA OFF CACHE BOOL "Build ImageStreamIO with CUDA" FORCE)
+endif(NOCUDA)
+
 set(USE_NCURSES OFF CACHE BOOL "Build with ncurses" FORCE)
 set(USE_CLI OFF CACHE BOOL "Build with CLI" FORCE)
 set(USE_STATIC_LTO OFF CACHE BOOL "Build with LTO" FORCE)
