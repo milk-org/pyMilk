@@ -151,12 +151,18 @@ def test_gpu_shm_from_np_cp():
     s_gpu = SHM('x', x_cp, location=0)
     assert type(s_gpu.get_data(copy=False)) == cp.ndarray
     assert np.all(s_gpu.get_data(copy=True) == -x_np)
-    assert np.all(s_gpu.get_data(copy=False) == x_cp)
+    # cp.all is broken when running off cupy-cudaVERx + system CUDA
+    # assert cp.all(s_gpu.get_data(copy=False) == +x_cp)
+    gpu_tmp = s_gpu.get_data(copy=False) - x_cp
+    assert np.all(gpu_tmp.get() == 0.0)
     s_gpu.destroy()
 
     s_gpu = SHM('x', x_np, location=0)
     assert np.all(s_gpu.get_data(copy=True) == x_np)
-    assert np.all(s_gpu.get_data(copy=False) == -x_cp)
+    # cp.all is broken when running off cupy-cudaVERx + system CUDA
+    # assert cp.all(s_gpu.get_data(copy=False) == -x_cp)
+    gpu_tmp = s_gpu.get_data(copy=False) + x_cp
+    assert np.all(gpu_tmp.get() == 0.0)
 
     s_gpu.destroy()
 
