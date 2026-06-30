@@ -1,4 +1,7 @@
-#include "transport_enums.hpp"
+#ifndef TRANSPORT_C_BIND_H
+#define TRANSPORT_C_BIND_H
+
+#include "transport_enums.h"
 #include "ImageStreamIO/ImageStruct.h"
 
 #ifdef __cplusplus
@@ -23,7 +26,8 @@ typedef struct
 
 // Receive API
 // ctor / dtor
-CBaseRecvTransport tr_recv_init(TransportTypeEnum t, const char* name, InternalStorageEnum req);
+CBaseRecvTransport tr_recv_init(TransportTypeRecvEnum t, const char* name);
+void tr_recv_init_storage_target(CBaseRecvTransport tport, InternalStorageEnum req);
 void tr_recv_close(CBaseRecvTransport *tport);
 
 // Attributes
@@ -37,7 +41,7 @@ void tr_recv_move_data_to_requested(CBaseRecvTransport tport);
 
 // Emit API
 // ctor / dtor
-CBaseEmitTransport tr_emit_init(TransportTypeEnum t, const char* name, InternalStorageEnum req);
+CBaseEmitTransport tr_emit_init(TransportTypeEmitEnum t, const char* name, IMAGE_METADATA md_req, InternalStorageEnum req);
 void tr_emit_close(CBaseEmitTransport *tport);
 
 // Attributes
@@ -51,4 +55,7 @@ void tr_emit_move_data_to_requested(CBaseEmitTransport tport);
 
 #ifdef __cplusplus
 }
+#endif
+
+
 #endif

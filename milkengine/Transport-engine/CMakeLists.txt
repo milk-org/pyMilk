@@ -4,8 +4,9 @@ set(LIBNAME TransportpyMilk)
 project(${LIBNAME})
 
 
-file(GLOB SOURCES "*.c" "*.cpp")
+file(GLOB_RECURSE SOURCES "*.c" "*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX "milk-")
+list(FILTER SOURCES EXCLUDE REGEX "tests/")
 
 # Core library (no TUI/ncurses dependency)
 add_library(${LIBNAME} SHARED ${SOURCES})
@@ -13,6 +14,8 @@ add_library(${LIBNAME} SHARED ${SOURCES})
 # Include directories
 target_include_directories(${LIBNAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include_cpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include_c>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -26,17 +29,22 @@ if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
 endif()
 
 # Link dependencies
-target_link_libraries(${LIBNAME} PUBLIC rt pthread m ImageStreamIOpyMilk)
+target_link_libraries(${LIBNAME} PUBLIC rt pthread m ImageStreamIOpyMilk zmq)
 
 install(TARGETS ${LIBNAME} EXPORT milkTargets DESTINATION lib)
 
-file(GLOB HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
+file(GLOB_RECURSE HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
 list(FILTER HEADER_FILES EXCLUDE REGEX "_internal")
 install(FILES ${HEADER_FILES} DESTINATION include)
 
 
 
 # Test target
-add_executable(TEST tests_in_c.c)
+add_executable(TEST tests/tests_in_c.c)
 find_package(CUDAToolkit 9.0 REQUIRED)
-target_link_libraries(TEST ${LIBNAME} ImageStreamIOpyMilk CUDA::cudart)
+target_link_libraries(TEST ${LIBNAME} ImageStreamIOpyMilk CUDA::cudart zmq)
+
+# Test target
+add_executable(TEST2 tests/tests_in_cpp.cpp)
+find_package(CUDAToolkit 9.0 REQUIRED)
+target_link_libraries(TEST2 ${LIBNAME} ImageStreamIOpyMilk CUDA::cudart zmq)
