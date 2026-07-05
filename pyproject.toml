@@ -3,20 +3,18 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=58", "wheel", 'nanobind', 'cmake']
 
 [project]
-authors = [
-  {name = "Vincent Deo", email = "vdeo@naoj.org"},
-]
+authors = [{ name = "Vincent Deo", email = "vdeo@naoj.org" }]
 description = "Python bindings and utilities to use with MILK and CACAO"
 name = "pyMilk"
 readme = "README.md"
 version = "1.2"
 dependencies = [
-  "docopt",
-  "libtmux",
-  "numpy",
-  # "cupy", # KEEP OPTIONAL
-  "tqdm",
-  "astropy",
+    "docopt",
+    "libtmux",
+    "numpy",
+    # "cupy", # KEEP OPTIONAL
+    "tqdm",
+    "astropy",
 ]
 
 [project.urls]
@@ -24,7 +22,7 @@ dependencies = [
 
 
 [tool.setuptools.packages.find]
-include=["pyMilk*"]
+include = ["pyMilk*"]
 
 [project.scripts]
 shmPlot = "pyMilk.visual.shmPlot:main"
@@ -36,18 +34,9 @@ updatekw = "pyMilk.scripts.updatekw:main"
 creashmim = "pyMilk.scripts.creashmim:main"
 
 
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = [
-    "--import-mode=importlib",
-    "--ignore=mains/*",
-]
-
-reportMissingImports = true
-reportMissingTypeStubs = false
-pythonVersion = "3.10"
-pythonPlatform = "Linux"
+addopts = ["--import-mode=importlib", "--ignore=mains/*"]
 
 [tool.coverage.run]
 command_line = "-m pytest"
@@ -65,7 +54,4 @@ exclude_lines = [
     "raise ImportError",
 ]
 ignore_errors = true
-omit = [
-    "tests/*",
-    "setup.py",
-]
+omit = ["tests/*", "setup.py"]
