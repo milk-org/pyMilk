@@ -150,16 +150,17 @@ def tests_run_coverage(session: nox.Session):
     session.install('nanobind', 'setuptools', 'coverage', 'pytest')
     session.install('.')  # for dependencies only...
 
-    if _imagestreamio_has_cuda(session):
-        session.install(_cupy_package())
-        _set_cuda_env(session)
-
     session.run(*('python setup.py build_ext --inplace'.split()))
+
     print(os.path.abspath(os.getcwd()))
     import shutil, glob, pathlib
     for file in glob.glob('./build/lib.*/pyMilk/*.so'):
         fname = pathlib.Path(file).name
         shutil.copyfile(file, f'pyMilk/{fname}')
+
+    if _imagestreamio_has_cuda(session):
+        session.install(_cupy_package())
+        _set_cuda_env(session)
 
     session.run('coverage', 'run')
     session.run('coverage', 'report')  # TODO where html??
