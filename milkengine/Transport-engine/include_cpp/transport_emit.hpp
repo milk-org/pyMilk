@@ -1,6 +1,8 @@
 #ifndef TRANSPORT_EMIT_HPP
 #define TRANSPORT_EMIT_HPP
 
+#include <cstring>
+
 #include "ImageStreamIO/ImageStreamIO.h"
 
 #include "transport_enums.h"

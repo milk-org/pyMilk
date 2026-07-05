@@ -23,8 +23,6 @@ class ZmqRecv: public RecvTransport
     bool needs_deferred_init_ = true;
 
     MILK_ZMQ_CONTEXT milk_zmq_ctx_;
-
-    void *d_mem_segment_ = nullptr;
 };
 
 #endif

@@ -17,17 +17,16 @@ class ComputeUnit
     );
 
     void loop_once();
-    void emit_tport_deferred_init(const char *emit_proto_string,
-                                  IMAGE_METADATA *md_request,
-                                  InternalStorageEnum emit_memloc);
 
     const char *name_;
     RecvTransport *recv_tport_ = nullptr;
     EmitTransport *emit_tport_ = nullptr;
 
-  protected:
-    const char* emit_proto_string_;
-    InternalStorageEnum emit_memloc_;
+    protected:
+      void emit_tport_deferred_init(IMAGE_METADATA *md_request);
+
+      const char* emit_proto_string_;
+      InternalStorageEnum emit_memloc_;
 };
 
 #endif // ifndef TRANSPORT_COMPUTE_UNIT_HPP

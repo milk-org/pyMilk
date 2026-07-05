@@ -29,12 +29,6 @@ ZmqRecv::~ZmqRecv()
 {
     // Dealloc zmq, dealloc GPU buffer
     milk_zmq_teardown(&milk_zmq_ctx_);
-    if(d_mem_segment_)
-    {
-        cudaSetDevice(req_);
-        cudaFree(d_mem_segment_);
-        d_mem_segment_ = nullptr;
-    }
     // Relay CPU image from the transport
     if(image_.used == 1)
     {
@@ -54,12 +48,15 @@ void ZmqRecv::deferred_init()
     // This is always a CPU image
     std::string safe_name(name_);
     safe_name.erase(std::remove_if(safe_name.begin(), safe_name.end(),
-                                   [](char c){ return c == '/' || c == ':'; }),
-                    safe_name.end());
+                                   [](char c)
+    {
+        return c == '/' || c == ':';
+    }),
+    safe_name.end());
 
     ImageStreamIO_createIm_gpu(&image_, ("zmqsub_" + safe_name).c_str(),
                                hdr.naxis, hdr.size, hdr.datatype,
-                               -1, // CPU memory
+                               req_, // CPU memory // TODO
                                1, // int shared
                                IMAGE_NB_SEMAPHORE, // int NBsem
                                hdr.NBkw,
@@ -68,17 +65,11 @@ void ZmqRecv::deferred_init()
                               );
     md_ = image_.md;
 
-    milk_zmq_ctx_.ptr = image_.array.raw; // always CPU
+    milk_zmq_ctx_.ptr = ImageStreamIO_get_image_d_ptr(
+                            &image_); // always CPU // TODO
     milk_zmq_ctx_.data_size = hdr.imdatamemsize;
 
-    if(req_ >= 0)
-    {
-        cudaSetDevice(req_);
-        cudaMalloc(&d_mem_segment_, hdr.imdatamemsize);
-        ptr_ = d_mem_segment_;
-    } else {
-        ptr_ = ImageStreamIO_get_image_d_ptr(&image_);
-    }
+    ptr_ = milk_zmq_ctx_.ptr;
 
     needs_deferred_init_ = false;
 }
@@ -145,14 +136,27 @@ void ZmqRecv::sync_barrier()
         }
 
         /* Copy pixel data into the caller-supplied buffer */
-        if(milk_zmq_ctx_.ptr)
+        // TODO must also update the receiving image metadata !
+        // TODO put the receiving image directly on the correct target
+
+        if(ptr_)
         {
             if(milk_zmq_ctx_.data_size < hdr->imdatamemsize)
             {
                 rc = -3;
                 goto cleanup;
             }
-            memcpy(milk_zmq_ctx_.ptr, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize);
+
+            if(req_ == CPU_MEMORY)
+            {
+                memcpy(ptr_, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize);
+            }
+            else
+            {
+                cudaSetDevice(req_);
+                cudaMemcpy(ptr_, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize,
+                           cudaMemcpyHostToDevice);
+            }
         }
     }
 
@@ -166,4 +170,5 @@ cleanup:
 
 void ZmqRecv::move_new_data_to_requested()
 {
+    // The data is in
 }

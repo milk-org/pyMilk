@@ -8,7 +8,7 @@
 
 #include "transport_enums.h"
 
-// Parse "scheme:$$rest" and return a pointer past ":$$", or nullptr on mismatch.
+// Parse "scheme:$$rest" and return a pointer past "::", or nullptr on mismatch.
 static const char *match_scheme(const char *str, const char *scheme)
 {
     size_t n = strlen(scheme);
@@ -49,9 +49,8 @@ ComputeUnit::ComputeUnit(
     }
 }
 
-void ComputeUnit::emit_tport_deferred_init(const char *emit_proto_string,
-        IMAGE_METADATA *md_request,
-        InternalStorageEnum emit_memloc)
+void ComputeUnit::emit_tport_deferred_init(
+        IMAGE_METADATA *md_request)
 {
     if(emit_tport_ != nullptr)
     {
@@ -60,18 +59,18 @@ void ComputeUnit::emit_tport_deferred_init(const char *emit_proto_string,
 
     // --- Emit transport factory ---
     const char *emit_name;
-    if((emit_name = match_scheme(emit_proto_string, "shm")))
+    if((emit_name = match_scheme(emit_proto_string_, "shm")))
     {
         emit_tport_ = new ImageStreamIOEmit(emit_name, md_request);
-    } else if ((emit_name = match_scheme(emit_proto_string, "zmq"))) {
+    } else if ((emit_name = match_scheme(emit_proto_string_, "zmq"))) {
         emit_tport_ = new ZmqEmit(emit_name, md_request);
     }
     else
     {
         throw std::invalid_argument("ComputeUnit: unknown emit protocol in: " +
-                                    std::string(emit_proto_string));
+                                    std::string(emit_proto_string_));
     }
-    emit_tport_->init_storage_target(emit_memloc);
+    emit_tport_->init_storage_target(emit_memloc_);
     emit_tport_->_initialized = true;
 }
 
@@ -84,7 +83,7 @@ void ComputeUnit::loop_once()
     if (emit_tport_ == nullptr) {
         IMAGE_METADATA md_req = *recv_tport_->md(); // by-value copy
         md_req.location = -1;
-        emit_tport_deferred_init(emit_proto_string_, &md_req, emit_memloc_);
+        emit_tport_deferred_init(&md_req);
     }
 
 
