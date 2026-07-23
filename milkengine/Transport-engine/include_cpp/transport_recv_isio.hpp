@@ -10,7 +10,7 @@ class ImageStreamIORecv: public RecvTransport
     ~ImageStreamIORecv();
     void init_storage_target(InternalStorageEnum req) override;
     void print_type() override;
-    void sync_barrier() override;
+    SyncEnum sync_barrier() override;
     void move_new_data_to_requested() override;
 
   protected:

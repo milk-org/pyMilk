@@ -43,7 +43,7 @@ void ZmqRecv::print_type()
 
 void ZmqRecv::deferred_init()
 {
-    MILK_ZMQ_WIRE_HEADER hdr = milk_zmq_ctx_.last_hdr;
+    MILK_WIRE_HEADER hdr = milk_zmq_ctx_.last_hdr;
 
     // This is always a CPU image
     std::string safe_name(name_);
@@ -66,7 +66,7 @@ void ZmqRecv::deferred_init()
     md_ = image_.md;
 
     milk_zmq_ctx_.ptr = ImageStreamIO_get_image_d_ptr(
-                            &image_); // always CPU // TODO
+                            &image_); // TODO
     milk_zmq_ctx_.data_size = hdr.imdatamemsize;
 
     ptr_ = milk_zmq_ctx_.ptr;
@@ -76,7 +76,7 @@ void ZmqRecv::deferred_init()
 
 // TODO return should be a triggerstatus
 // TODO Really we should just take a PROCESSINFO* as argument here.
-void ZmqRecv::sync_barrier()
+SyncEnum ZmqRecv::sync_barrier()
 {
     // Wait for message, perform deferred init
     zmq_msg_t msg_topic, msg_hdr, msg_data;
@@ -99,16 +99,16 @@ void ZmqRecv::sync_barrier()
         rc = -1;
         goto cleanup;
     }
-    if(zmq_msg_size(&msg_hdr) != sizeof(MILK_ZMQ_WIRE_HEADER))
+    if(zmq_msg_size(&msg_hdr) != sizeof(MILK_WIRE_HEADER))
     {
         rc = -2;
         goto cleanup;
     }
 
     {
-        MILK_ZMQ_WIRE_HEADER *hdr = (MILK_ZMQ_WIRE_HEADER *)zmq_msg_data(&msg_hdr);
+        MILK_WIRE_HEADER *hdr = (MILK_WIRE_HEADER *)zmq_msg_data(&msg_hdr);
 
-        if(hdr->magic != MILK_ZMQ_MAGIC || hdr->version != MILK_ZMQ_VERSION)
+        if(hdr->magic != MILK_NETWORK_MAGIC || hdr->version != MILK_ZMQ_VERSION)
         {
             rc = -2;
             goto cleanup;
@@ -164,7 +164,10 @@ cleanup:
     zmq_msg_close(&msg_topic);
     zmq_msg_close(&msg_hdr);
     zmq_msg_close(&msg_data);
-    return;
+    if (rc < 0) {
+        return SyncEnum::FAILED;
+    }
+    return SyncEnum::SUCCESS;
 }
 
 

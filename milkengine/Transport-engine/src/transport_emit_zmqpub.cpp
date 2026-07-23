@@ -40,7 +40,7 @@ ZmqEmit::ZmqEmit(const char *name, IMAGE_METADATA *md_request)
     // Populate stable wire header fields once at construction.
     // Use topic as the ZMQ topic frame (frame 0) so subscribers filtering
     // on a specific stream name get a match; empty topic = match-all.
-    milk_zmq_ctx_.wire_hdr.magic         = MILK_ZMQ_MAGIC;
+    milk_zmq_ctx_.wire_hdr.magic         = MILK_NETWORK_MAGIC;
     milk_zmq_ctx_.wire_hdr.version       = MILK_ZMQ_VERSION;
     strncpy(milk_zmq_ctx_.wire_hdr.name, topic.empty() ? md_->name : topic.c_str(),
             STRINGMAXLEN_IMAGE_NAME - 1);

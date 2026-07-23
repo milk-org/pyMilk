@@ -24,7 +24,9 @@ typedef struct
 } CBaseEmitTransport;
 #endif
 
-// Receive API
+/*
+ * Receive APIs
+ */
 // ctor / dtor
 CBaseRecvTransport tr_recv_init(TransportTypeRecvEnum t, const char* name);
 void tr_recv_init_storage_target(CBaseRecvTransport tport, InternalStorageEnum req);
@@ -36,10 +38,12 @@ void* tr_recv_ptr_(CBaseRecvTransport tport);
 
 // Methods
 void tr_recv_print_type(CBaseRecvTransport tport);
-void tr_recv_sync_barrier(CBaseRecvTransport tport);
+int tr_recv_sync_barrier(CBaseRecvTransport tport);
 void tr_recv_move_data_to_requested(CBaseRecvTransport tport);
 
-// Emit API
+/*
+ * Emit APIs
+ */
 // ctor / dtor
 CBaseEmitTransport tr_emit_init(TransportTypeEmitEnum t, const char* name, IMAGE_METADATA md_req, InternalStorageEnum req);
 void tr_emit_close(CBaseEmitTransport *tport);

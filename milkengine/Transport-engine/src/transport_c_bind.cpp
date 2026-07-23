@@ -58,9 +58,9 @@ void *tr_recv_ptr_(CBaseRecvTransport tport)
     return tport.impl->ptr();
 }
 
-void tr_recv_sync_barrier(CBaseRecvTransport tport)
+int tr_recv_sync_barrier(CBaseRecvTransport tport)
 {
-    return tport.impl->sync_barrier();
+    return static_cast<int>(tport.impl->sync_barrier());
 }
 void tr_recv_move_data_to_requested(CBaseRecvTransport tport)
 {

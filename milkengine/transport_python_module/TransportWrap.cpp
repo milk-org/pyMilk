@@ -2,8 +2,10 @@
 #include <nanobind/stl/string.h>
 
 #include "transport_emit_isio.hpp"
+#include "transport_emit_milktcp.hpp"
 #include "transport_emit_zmqpub.hpp"
 #include "transport_recv_isio.hpp"
+#include "transport_recv_milktcp.hpp"
 #include "transport_recv_zmqsub.hpp"
 #include "test_compute_unit.hpp"
 
@@ -42,6 +44,13 @@ NB_MODULE(TransportWrap, m)
     .value("RECVTYPE_ISIO",   TransportTypeRecvEnum::RECVTYPE_ISIO)
     .value("RECVTYPE_UDP",    TransportTypeRecvEnum::RECVTYPE_UDP)
     .value("RECVTYPE_ZMQSUB", TransportTypeRecvEnum::RECVTYPE_ZMQSUB);
+
+    nb::enum_<SyncEnum>(m, "SyncEnum")
+    .value("SUCCESS", SyncEnum::SUCCESS)
+    .value("FATAL", SyncEnum::FATAL)
+    .value("FAILED", SyncEnum::FAILED)
+    .value("TIMEOUT", SyncEnum::TIMEOUT);
+
 
     // -----------------------------------------------------------------------
     // Abstract base: EmitTransport
@@ -248,6 +257,32 @@ Parameters:
 
 Parameters:
     name  [in]: name / connection string of the ZMQ stream to receive from
+)pbdoc",
+             nb::arg("name"));
+
+    // -----------------------------------------------------------------------
+    // MilkTCPEmit
+    // -----------------------------------------------------------------------
+    nb::class_<MilkTCPEmit, EmitTransport>(m, "MilkTcpEmit")
+        .def(nb::init<const char *, IMAGE_METADATA *>(),
+             R"pbdoc(Create a MILK TCP emitter (client side).
+
+Parameters:
+    name        [in]: connection string in the form "ipv4:port" (e.g. "127.0.0.1:8888")
+    md_request  [in]: metadata template describing shape, datatype, etc.
+)pbdoc",
+             nb::arg("name"),
+             nb::arg("md_request"));
+
+    // -----------------------------------------------------------------------
+    // MilkTCPRecv
+    // -----------------------------------------------------------------------
+    nb::class_<MilkTCPRecv, RecvTransport>(m, "MilkTcpRecv")
+        .def(nb::init<const char *>(),
+             R"pbdoc(Create a MILK TCP receiver (server side).
+
+Parameters:
+    name  [in]: port number as a string (e.g. "8888"); binds to INADDR_ANY
 )pbdoc",
              nb::arg("name"));
 

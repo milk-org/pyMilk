@@ -2,6 +2,8 @@
 #include <zmq.h>
 #include "tlib_zmq.h"
 
+// TODO probably I don't want this file to exist and I just want to embed it in my C++ classes.
+
 /* ---------------------------------------------------------------------------
  * Wire protocol
  *
@@ -91,7 +93,7 @@ int milk_zmq_send(MILK_ZMQ_CONTEXT *ctx)
     }
 
     /* Stamp mandatory protocol fields; caller is responsible for the rest */
-    ctx->wire_hdr.magic         = MILK_ZMQ_MAGIC;
+    ctx->wire_hdr.magic         = MILK_NETWORK_MAGIC;
     ctx->wire_hdr.version       = MILK_ZMQ_VERSION;
     ctx->wire_hdr.imdatamemsize = ctx->data_size;
 
@@ -152,16 +154,16 @@ int milk_zmq_recv(MILK_ZMQ_CONTEXT *ctx)
         rc = -1;
         goto cleanup;
     }
-    if(zmq_msg_size(&msg_hdr) != sizeof(MILK_ZMQ_WIRE_HEADER))
+    if(zmq_msg_size(&msg_hdr) != sizeof(MILK_WIRE_HEADER))
     {
         rc = -2;
         goto cleanup;
     }
 
     {
-        MILK_ZMQ_WIRE_HEADER *hdr = (MILK_ZMQ_WIRE_HEADER *)zmq_msg_data(&msg_hdr);
+        MILK_WIRE_HEADER *hdr = (MILK_WIRE_HEADER *)zmq_msg_data(&msg_hdr);
 
-        if(hdr->magic != MILK_ZMQ_MAGIC || hdr->version != MILK_ZMQ_VERSION)
+        if(hdr->magic != MILK_NETWORK_MAGIC || hdr->version != MILK_ZMQ_VERSION)
         {
             rc = -2;
             goto cleanup;

@@ -20,7 +20,7 @@ class RecvTransport
     // Pure virtual
     virtual void init_storage_target(InternalStorageEnum req) = 0;
     virtual void print_type() = 0;
-    virtual void sync_barrier() = 0;
+    virtual SyncEnum sync_barrier() = 0;
     virtual void move_new_data_to_requested() = 0;
 
 

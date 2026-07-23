@@ -12,11 +12,12 @@ extern "C" {
 /* ---------------------------------------------------------------------------
  * Wire protocol constants
  * ---------------------------------------------------------------------------*/
-#define MILK_ZMQ_MAGIC    0x4D494C4B   /* "MILK" */
+#define MILK_NETWORK_MAGIC    0x4D494C4B   /* "MILK" */
 #define MILK_ZMQ_VERSION  1
+#define MILK_TCP_VERSION  1
 
 /* ---------------------------------------------------------------------------
- * MILK_ZMQ_WIRE_HEADER
+ * MILK_WIRE_HEADER
  *
  * Sent as ZMQ frame 1 in every published message.
  * Contains the minimal IMAGE_METADATA fields needed by the receiver to:
@@ -24,23 +25,30 @@ extern "C" {
  *   - create or validate a local IMAGE
  *   - synchronize frame counters and timestamps
  * ---------------------------------------------------------------------------*/
-typedef struct __attribute__((packed))
+typedef struct __attribute__((aligned(8)))
 {
-    uint32_t magic;                          /**< MILK_ZMQ_MAGIC                    */
-    uint16_t version;                        /**< MILK_ZMQ_VERSION                  */
-    char     name[STRINGMAXLEN_IMAGE_NAME];  /**< stream name                       */
-    uint8_t  naxis;                          /**< 1, 2 or 3                         */
-    uint32_t size[3];                        /**< size along each axis              */
-    uint8_t  datatype;                       /**< _DATATYPE_* code                  */
-    uint64_t nelement;                       /**< total number of pixels            */
-    uint64_t imdatamemsize;                  /**< payload size in bytes             */
-    uint64_t cnt0;                           /**< frame counter from sender         */
-    uint64_t cnt1;                           /**< frame counter from sender         */
-    uint64_t NBkw;                           /**< number of keywords from sender    */
-    struct timespec
-        atime;                   /**< acquisition timestamp from sender */
+    uint32_t magic;                         /* MILK_ZMQ_MAGIC                 */
+    uint16_t version;                       /* MILK_ZMQ_VERSION               */
+    char     name[STRINGMAXLEN_IMAGE_NAME]; /* stream name                    */
+    uint8_t  naxis;                         /* 1, 2 or 3                      */
+    uint32_t size[3];                       /* size along each axis           */
+    uint8_t  datatype;                      /* _DATATYPE_* code               */
+    uint64_t nelement;                      /* total number of pixels         */
+    uint64_t imdatamemsize;                 /* payload size in bytes          */
+    uint64_t cnt0;                          /* frame counter from sender      */
+    uint64_t cnt1;                          /* frame counter from sender      */
+    uint64_t NBkw;                          /* number of keywords from sender */
+    struct timespec atime;                  /* acq timestamp from sender      */
 }
-MILK_ZMQ_WIRE_HEADER;
+MILK_WIRE_HEADER;
+
+enum NetErrorEnum
+{
+    SUCCESS = 0,
+    TIMEOUT = 1,
+    DISCONNECT = 2,
+    FATAL = -1
+};
 
 /* ---------------------------------------------------------------------------
  * MILK_ZMQ_CONTEXT
@@ -58,9 +66,9 @@ typedef struct
     uint64_t  data_size;                 /**< size of ptr buffer in bytes           */
     int       is_pub;                    /**< 1 = publisher, 0 = subscriber         */
 
-    MILK_ZMQ_WIRE_HEADER
+    MILK_WIRE_HEADER
     wire_hdr;       /**< header to send (pub); caller fills before milk_zmq_send() */
-    MILK_ZMQ_WIRE_HEADER
+    MILK_WIRE_HEADER
     last_hdr;       /**< last wire header received (sub only)  */
 } MILK_ZMQ_CONTEXT;
 

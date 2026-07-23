@@ -1,4 +1,6 @@
 #include "transport_recv_isio.hpp"
+#include <stdexcept>
+#include <string>
 
 ImageStreamIORecv::ImageStreamIORecv(const char *name)
     : RecvTransport(name)
@@ -7,7 +9,10 @@ ImageStreamIORecv::ImageStreamIORecv(const char *name)
     printf("ImageStreamIORecv::ctor\n");
     fflush(stdout);
 
-    ImageStreamIO_openIm(&image_, name_); // ERRCHECK
+    if(IMAGESTREAMIO_SUCCESS != ImageStreamIO_openIm(&image_, name_)) {
+        throw std::runtime_error(
+            std::string("Cannot open image ") + name_ + " -- FATAL");
+    }
     md_ = image_.md;
 
     // Initialize synchro over semaphore
@@ -82,7 +87,7 @@ void ImageStreamIORecv::print_type()
 
 // TODO return should be a triggerstatus
 // TODO And really we should just take a PROCESSINFO* as argument here.
-void ImageStreamIORecv::sync_barrier()
+SyncEnum ImageStreamIORecv::sync_barrier()
 {
     // get current time
     struct timespec ts;
@@ -90,7 +95,11 @@ void ImageStreamIORecv::sync_barrier()
     ts.tv_sec += 1;
     // TODO and should notify of the timeout !!
     // TODO or, all transports should be timeout-capable
-    while(ImageStreamIO_semtimedwait(&image_, sem_trig_id_, &ts) != 0) {}
+
+    if(ImageStreamIO_semtimedwait(&image_, sem_trig_id_, &ts) != 0) {
+        return SyncEnum::TIMEOUT;
+    }
+    return SyncEnum::SUCCESS;
 }
 
 

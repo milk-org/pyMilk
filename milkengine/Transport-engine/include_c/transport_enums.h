@@ -33,9 +33,26 @@ typedef enum
     EMITTYPE_ZMQPUB = 1
 } TransportTypeEmitEnum;
 
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+
+// TODO find a more programmatic way to generate elegant C/C++ enums
+#ifdef __cplusplus
+enum class SyncEnum {
+    SUCCESS = 0,
+    TIMEOUT = 1,
+    FAILED = 2,
+    FATAL = -1,
+};
+#else // #ifdef __cplusplus
+typedef enum {
+    SyncEnum_SUCCESS = 0,
+    SyncEnum_TIMEOUT = 1,
+    SyncEnum_FAILED = 2,
+    SyncEnum_FATAL = -1,
+} SyncEnum;
+#endif // #ifdef __cplusplus #else
+
+#endif // #ifndef TRANSPORT_ENUMS_H
