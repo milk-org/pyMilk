@@ -13,6 +13,7 @@ pytest_plugins = [
         "tests.conftestaux.coverage",
         "tests.conftestaux.async_shm_fixtures",
         "tests.conftestaux.gpu_transfer_monitor",
+        "tests.conftestaux.gpu_configure",
 ]
 
 

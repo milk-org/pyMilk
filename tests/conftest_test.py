@@ -80,3 +80,12 @@ def test_counts_in_popen():
     assert proc.returncode == 0
     assert counts.dtoh == 0
     assert counts.htod == 1
+
+
+def test_gpu_configure():
+    print(f'\n{"--- GPU CONF SCAN ---":^40}')
+    from .conftestaux import gpu_configure as g
+    print(F"{'NVIDIA DRIVER':<20}{str(g.NVIDIA_DRIVER_FOUND):>20}")
+    print(F"{'GPU LIST':<20}{str(g.GPULIST):>20}")
+    print(F"{'GPU TESTING':<20}{str(g.SINGLE_GPU_TESTING):>20}")
+    print(F"{'GPU P2P TESTING':<20}{str(g.MULTI_GPU_TESTING):>20}")
