@@ -96,21 +96,6 @@ MILK_ZMQ_CONTEXT milk_zmq_sub_init(void *ptr, uint64_t data_size,
 /** Close socket and destroy zmq context. */
 void milk_zmq_teardown(MILK_ZMQ_CONTEXT *ctx);
 
-/**
- * Publish one frame from ctx->image.
- * Returns 0 on success, -1 on zmq error.
- */
-int milk_zmq_send(MILK_ZMQ_CONTEXT *ctx);
-
-/**
- * Receive one frame into ctx->image.
- * Returns  0 on success
- *         -1 on zmq error
- *         -2 on protocol mismatch
- *         -3 on size mismatch
- */
-int milk_zmq_recv(MILK_ZMQ_CONTEXT *ctx);
-
 #ifdef __cplusplus
 }
 #endif

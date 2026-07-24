@@ -9,6 +9,9 @@ ImageStreamIORecv::ImageStreamIORecv(const char *name)
     printf("ImageStreamIORecv::ctor\n");
     fflush(stdout);
 
+    // TODO this should be dynamic in sync_barrier and offer autorelink cap.
+    // TODO there is a deadband where during autorelinking the SHM may not exist...
+    // May have to look at reconstruction-substitution with atomic mv.
     if(IMAGESTREAMIO_SUCCESS != ImageStreamIO_openIm(&image_, name_)) {
         throw std::runtime_error(
             std::string("Cannot open image ") + name_ + " -- FATAL");
@@ -93,8 +96,26 @@ SyncEnum ImageStreamIORecv::sync_barrier()
     struct timespec ts;
     clock_gettime(CLOCK_ISIO, &ts);
     ts.tv_sec += 1;
-    // TODO and should notify of the timeout !!
-    // TODO or, all transports should be timeout-capable
+
+    int ret = ImageStreamIO_check_image_endpoint_inode(&image_);
+    if (ret == IMAGESTREAMIO_INODE) {
+        printf("ImageStreamIO_check_image_endpoint_inode -- %d [inode %ld]\n", ret, image_.md->inode);
+    }
+
+    if (IMAGESTREAMIO_FAILURE == ImageStreamIO_autorelink_if_need_if_can(&image_)) {
+        throw std::runtime_error(
+            std::string("Autorelink error (dead inode, bad size, bad dtype) on ") + name_ + " -- FATAL");
+    }
+    // Update internals in connection with image_
+    md_ = image_.md;
+    sem_trig_id_ = ImageStreamIO_getsemwaitindex(&image_, -1);
+    if (req_ == md_->location) {
+        ptr_ = ImageStreamIO_get_image_d_ptr(&image_);
+    }
+
+    if (ret == IMAGESTREAMIO_INODE) {
+        printf("Successful autorelink recover. [inode %ld]\n", image_.md->inode);
+    }
 
     if(ImageStreamIO_semtimedwait(&image_, sem_trig_id_, &ts) != 0) {
         return SyncEnum::TIMEOUT;
