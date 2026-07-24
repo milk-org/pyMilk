@@ -592,11 +592,12 @@ class SHM:
                 self.IMAGE.semwait(self.semID)
             else:
                 err = self.IMAGE.semtimedwait(self.semID, timeout)
-                if err != 0:
-                    print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
-                          )
+                if err != 0:  # Timeout
                     if return_none_on_timeout:
                         return None
+                    else:  # Warn, and proceed to return stale data.
+                        print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
+                              )
 
         # FIXME ! image_decode, full_cube_decode don't have the same meaning
         # in case of autoSqueeze collapsing dimensions.
