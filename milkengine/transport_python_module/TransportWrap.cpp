@@ -40,7 +40,6 @@ NB_MODULE(TransportWrap, m)
     .value("EMITTYPE_ZMQPUB", TransportTypeEmitEnum::EMITTYPE_ZMQPUB);
 
     nb::enum_<TransportTypeRecvEnum>(m, "TransportTypeRecvEnum")
-    .value("RECVTYPE_A",      TransportTypeRecvEnum::RECVTYPE_A)
     .value("RECVTYPE_ISIO",   TransportTypeRecvEnum::RECVTYPE_ISIO)
     .value("RECVTYPE_UDP",    TransportTypeRecvEnum::RECVTYPE_UDP)
     .value("RECVTYPE_ZMQSUB", TransportTypeRecvEnum::RECVTYPE_ZMQSUB);

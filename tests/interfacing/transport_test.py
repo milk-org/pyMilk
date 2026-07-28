@@ -120,8 +120,10 @@ def multiprocessed_shm_to_emittransport(emit_endpoint: str, mem_target: int,
 pmp = pytest.mark.parametrize
 
 
-@pmp(('emit_addr', 'recv_addr'), [('shm::x', 'shm::x'),
-                                  ('tcp::127.0.0.1:12345', 'tcp::12345')])
+@pmp(('emit_addr', 'recv_addr'),
+     [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
+      ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
+      ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
 def test_emit_survives_recv_respawn(emit_addr, recv_addr):
     arr = np.random.randn(60, 61).astype(np.float32)
     shm_emit = SHM('mproc_emit_relay', arr)
@@ -193,8 +195,10 @@ def test_emit_survives_recv_respawn(emit_addr, recv_addr):
     shm_recv.destroy()
 
 
-@pmp(('emit_addr', 'recv_addr'), [('shm::x', 'shm::x'),
-                                  ('tcp::127.0.0.1:12345', 'tcp::12345')])
+@pmp(('emit_addr', 'recv_addr'),
+     [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
+      ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
+      ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
 def test_transport_recv_survives_emit_respawn(emit_addr, recv_addr):
     arr = np.random.randn(60, 61).astype(np.float32)
     shm_emit = SHM('mproc_emit_relay', arr)
@@ -222,7 +226,7 @@ def test_transport_recv_survives_emit_respawn(emit_addr, recv_addr):
         te.start()
 
         if kk == 0:
-            _ensure_shm_exists('x', timeout=3.0)
+            _ensure_shm_exists('x', timeout=1.0)
             tr = mkrecv()
             tr.start()
             shm_recv._checkGrabSemaphore(
@@ -246,8 +250,7 @@ def test_transport_recv_survives_emit_respawn(emit_addr, recv_addr):
                 assert arr_returned is not None
                 np.testing.assert_equal(arr_returned, arr)
 
-        print('event_recv set')
-        #event_recv.set()
+        print('killing emit')
         te.kill(
         )  # calling event_recv.set() induces a full timeout cycle and it's annoying. But this probably bypasses the destructor for shared resources
         te.join()
@@ -259,3 +262,9 @@ def test_transport_recv_survives_emit_respawn(emit_addr, recv_addr):
 
     shm_emit.destroy()
     shm_recv.destroy()
+
+    try:
+        x = SHM('x')
+        x.destroy()
+    except:
+        pass

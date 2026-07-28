@@ -21,7 +21,6 @@ typedef enum
 
 typedef enum
 {
-    RECVTYPE_A = 0,
     RECVTYPE_ISIO = 1,
     RECVTYPE_UDP = 2,
     RECVTYPE_ZMQSUB = 3,

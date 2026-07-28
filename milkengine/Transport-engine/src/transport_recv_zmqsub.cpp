@@ -56,7 +56,7 @@ void ZmqRecv::deferred_init()
 
     ImageStreamIO_createIm_gpu(&image_, ("zmqsub_" + safe_name).c_str(),
                                hdr.naxis, hdr.size, hdr.datatype,
-                               req_, // CPU memory // TODO
+                               req_, // CPU or GPU memory
                                1, // int shared
                                IMAGE_NB_SEMAPHORE, // int NBsem
                                hdr.NBkw,
@@ -65,8 +65,7 @@ void ZmqRecv::deferred_init()
                               );
     md_ = image_.md;
 
-    milk_zmq_ctx_.ptr = ImageStreamIO_get_image_d_ptr(
-                            &image_); // TODO
+    milk_zmq_ctx_.ptr = ImageStreamIO_get_image_d_ptr(&image_);
     milk_zmq_ctx_.data_size = hdr.imdatamemsize;
 
     ptr_ = milk_zmq_ctx_.ptr;
@@ -78,100 +77,98 @@ void ZmqRecv::deferred_init()
 // TODO Really we should just take a PROCESSINFO* as argument here.
 SyncEnum ZmqRecv::sync_barrier()
 {
+    MILK_WIRE_HEADER *hdr;
+    SyncEnum ret = SyncEnum::SUCCESS;
+
     // Wait for message, perform deferred init
     zmq_msg_t msg_topic, msg_hdr, msg_data;
     zmq_msg_init(&msg_topic);
     zmq_msg_init(&msg_hdr);
     zmq_msg_init(&msg_data);
 
-    int rc = 0;
-
     /* Frame 0: topic (image name) */
     if(zmq_msg_recv(&msg_topic, milk_zmq_ctx_.socket, 0) < 0)
     {
-        rc = -1;
+        ret = zmq_errno() == EAGAIN ? SyncEnum::TIMEOUT : SyncEnum::FAILED;
         goto cleanup;
     }
 
     /* Frame 1: wire header */
     if(zmq_msg_recv(&msg_hdr, milk_zmq_ctx_.socket, 0) < 0)
     {
-        rc = -1;
+        ret = zmq_errno() == EAGAIN ? SyncEnum::TIMEOUT : SyncEnum::FAILED;
         goto cleanup;
     }
     if(zmq_msg_size(&msg_hdr) != sizeof(MILK_WIRE_HEADER))
     {
-        rc = -2;
+        ret = zmq_errno() == EAGAIN ? SyncEnum::TIMEOUT : SyncEnum::FAILED;
         goto cleanup;
     }
 
+    hdr = (MILK_WIRE_HEADER *)zmq_msg_data(&msg_hdr);
+
+    if(hdr->magic != MILK_NETWORK_MAGIC || hdr->version != MILK_ZMQ_VERSION)
     {
-        MILK_WIRE_HEADER *hdr = (MILK_WIRE_HEADER *)zmq_msg_data(&msg_hdr);
+        ret = SyncEnum::FAILED;
+        goto cleanup;
+    }
 
-        if(hdr->magic != MILK_NETWORK_MAGIC || hdr->version != MILK_ZMQ_VERSION)
+    /* Frame 2: pixel data */
+    if(zmq_msg_recv(&msg_data, milk_zmq_ctx_.socket, 0) < 0)
+    {
+        ret = zmq_errno() == EAGAIN ? SyncEnum::TIMEOUT : SyncEnum::FAILED;
+        goto cleanup;
+    }
+
+    if(zmq_msg_size(&msg_data) != (size_t)hdr->imdatamemsize)
+    {
+        ret = zmq_errno() == EAGAIN ? SyncEnum::TIMEOUT : SyncEnum::FAILED;
+        goto cleanup;
+    }
+
+    /* Stash last header so caller can inspect metadata */
+    milk_zmq_ctx_.last_hdr = *hdr;
+
+    if(needs_deferred_init_)
+    {
+        deferred_init();
+    }
+
+    /* Copy pixel data into the caller-supplied buffer */
+    // TODO must also update the receiving image metadata !
+    // TODO put the receiving image directly on the correct target
+
+    if(ptr_)
+    {
+        md_->write = 1; // Notify image write
+        if(milk_zmq_ctx_.data_size < hdr->imdatamemsize)
         {
-            rc = -2;
+            ret = SyncEnum::FAILED;
             goto cleanup;
         }
 
-        /* Frame 2: pixel data */
-        if(zmq_msg_recv(&msg_data, milk_zmq_ctx_.socket, 0) < 0)
+        if(req_ == CPU_MEMORY)
         {
-            rc = -1;
-            goto cleanup;
+            memcpy(ptr_, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize);
         }
-
-        if(zmq_msg_size(&msg_data) != (size_t)hdr->imdatamemsize)
+        else
         {
-            rc = -3;
-            goto cleanup;
+            cudaSetDevice(req_);
+            cudaMemcpy(ptr_, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize,
+                       cudaMemcpyHostToDevice);
         }
-
-        /* Stash last header so caller can inspect metadata */
-        milk_zmq_ctx_.last_hdr = *hdr;
-
-        if(needs_deferred_init_)
-        {
-            deferred_init();
-        }
-
-        /* Copy pixel data into the caller-supplied buffer */
-        // TODO must also update the receiving image metadata !
-        // TODO put the receiving image directly on the correct target
-
-        if(ptr_)
-        {
-            if(milk_zmq_ctx_.data_size < hdr->imdatamemsize)
-            {
-                rc = -3;
-                goto cleanup;
-            }
-
-            if(req_ == CPU_MEMORY)
-            {
-                memcpy(ptr_, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize);
-            }
-            else
-            {
-                cudaSetDevice(req_);
-                cudaMemcpy(ptr_, zmq_msg_data(&msg_data), (size_t)hdr->imdatamemsize,
-                           cudaMemcpyHostToDevice);
-            }
-        }
+        ImageStreamIO_UpdateIm_atime(&image_, &hdr->atime);
     }
 
 cleanup:
     zmq_msg_close(&msg_topic);
     zmq_msg_close(&msg_hdr);
     zmq_msg_close(&msg_data);
-    if (rc < 0) {
-        return SyncEnum::FAILED;
-    }
-    return SyncEnum::SUCCESS;
+    return ret;
 }
 
 
 void ZmqRecv::move_new_data_to_requested()
 {
-    // The data is in
+    // The data is in the correct location already from sync_barrier, nothing extra to do.
 }
