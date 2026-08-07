@@ -3,9 +3,11 @@
 
 #include "transport_emit_isio.hpp"
 #include "transport_emit_milktcp.hpp"
+#include "transport_emit_milkudp.hpp"
 #include "transport_emit_zmqpub.hpp"
 #include "transport_recv_isio.hpp"
 #include "transport_recv_milktcp.hpp"
+#include "transport_recv_milkudp.hpp"
 #include "transport_recv_zmqsub.hpp"
 #include "test_compute_unit.hpp"
 
@@ -279,6 +281,33 @@ Parameters:
     nb::class_<MilkTCPRecv, RecvTransport>(m, "MilkTcpRecv")
         .def(nb::init<const char *>(),
              R"pbdoc(Create a MILK TCP receiver (server side).
+
+Parameters:
+    name  [in]: port number as a string (e.g. "8888"); binds to INADDR_ANY
+)pbdoc",
+             nb::arg("name"));
+
+    // -----------------------------------------------------------------------
+    // MilkUDPEmit
+    // -----------------------------------------------------------------------
+    nb::class_<MilkUDPEmit, EmitTransport>(m, "MilkUdpEmit")
+        .def(nb::init<const char *, IMAGE_METADATA *>(),
+             R"pbdoc(Create a MILK UDP emitter.
+
+Parameters:
+    name        [in]: connection string in the form "ipv4:port" (e.g. "127.0.0.1:8888"),
+                       used for unicast and multicast destinations
+    md_request  [in]: metadata template describing shape, datatype, etc.
+)pbdoc",
+             nb::arg("name"),
+             nb::arg("md_request"));
+
+    // -----------------------------------------------------------------------
+    // MilkUDPRecv
+    // -----------------------------------------------------------------------
+    nb::class_<MilkUDPRecv, RecvTransport>(m, "MilkUdpRecv")
+        .def(nb::init<const char *>(),
+             R"pbdoc(Create a MILK UDP receiver.
 
 Parameters:
     name  [in]: port number as a string (e.g. "8888"); binds to INADDR_ANY

@@ -15,6 +15,10 @@ extern "C" {
 #define MILK_NETWORK_MAGIC    0x4D494C4B   /* "MILK" */
 #define MILK_ZMQ_VERSION  1
 #define MILK_TCP_VERSION  1
+#define MILK_UDP_VERSION  1
+
+// Lower bound on allowable payload per UDP datagram
+constexpr size_t DATAGRAM_CHUNK_SIZE = 62 * 1024;
 
 /* ---------------------------------------------------------------------------
  * MILK_WIRE_HEADER
@@ -37,6 +41,7 @@ typedef struct __attribute__((aligned(8)))
     uint64_t imdatamemsize;                 /* payload size in bytes          */
     uint64_t cnt0;                          /* frame counter from sender      */
     uint64_t cnt1;                          /* frame counter from sender      */
+    uint64_t cnt_udp;                       /* datagram counter for UDP       */
     uint64_t NBkw;                          /* number of keywords from sender */
     struct timespec atime;                  /* acq timestamp from sender      */
 }

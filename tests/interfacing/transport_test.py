@@ -23,6 +23,24 @@ import time
 import numpy as np
 
 
+def emitter_class(transport_type: str):
+    return {
+            'shm': TW.ImageStreamIOEmit,
+            'zmq': TW.ZmqEmit,
+            'tcp': TW.MilkTcpEmit,
+            'udp': TW.MilkUdpEmit
+    }[transport_type]
+
+
+def receiver_class(transport_type: str):
+    return {
+            'shm': TW.ImageStreamIORecv,
+            'zmq': TW.ZmqRecv,
+            'tcp': TW.MilkTcpRecv,
+            'udp': TW.MilkUdpRecv
+    }[transport_type]
+
+
 def _ensure_shm_exists(name: str, timeout: float) -> bool:
     t = time.time()
     while time.time() - t < timeout:
@@ -67,11 +85,7 @@ def multiprocessed_recvtransport_to_shm(recv_endpoint: str, mem_target: int,
     s = SHM('mproc_recv_relay', symcode=0)  # assert exists
 
     transport_type, transport_address = recv_endpoint.split('::')
-    Klass = {
-            'shm': TW.ImageStreamIORecv,
-            'zmq': TW.ZmqRecv,
-            'tcp': TW.MilkTcpRecv,
-    }[transport_type]
+    Klass = receiver_class(transport_type)
     tport_recv = Klass(transport_address)
     tport_recv.init_storage_target(mem_target)
 
@@ -106,11 +120,7 @@ def multiprocessed_shm_to_emittransport(emit_endpoint: str, mem_target: int,
     s = SHM('mproc_emit_relay', symcode=0)
 
     transport_type, transport_address = emit_endpoint.split('::')
-    Klass = {
-            'shm': TW.ImageStreamIOEmit,
-            'zmq': TW.ZmqEmit,
-            'tcp': TW.MilkTcpEmit,
-    }[transport_type]
+    Klass = emitter_class(transport_type)
     tport_emit = Klass(transport_address, s.IMAGE.md)
     tport_emit.init_storage_target(mem_target)
 
@@ -148,10 +158,15 @@ def _recv_get_data(tport_recv):
     raise ValueError('Error on sync_barrier other than TIMEOUT')
 
 
-@_pmp(('emit_addr', 'recv_addr'),
-      [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
-       ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
-       ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
+@_pmp(
+        ('emit_addr', 'recv_addr'),
+        [  #
+                ('shm::x', 'shm::x'),
+                ('tcp::127.0.0.1:12345', 'tcp::12345'),
+                ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
+                ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346'),
+                ('udp::127.0.0.1:12346', 'udp::12346'),
+        ])
 def test_emit_survives_recv_respawn(emit_addr, recv_addr):
     # Same as test_emit_survives_recv_respawn, except the recv transport is
     # created/destroyed and driven directly in the main testing thread,
@@ -173,11 +188,7 @@ def test_emit_survives_recv_respawn(emit_addr, recv_addr):
 
     def mkrecv_mainthread():
         transport_type, transport_address = recv_addr.split('::')
-        Klass = {
-                'shm': TW.ImageStreamIORecv,
-                'zmq': TW.ZmqRecv,
-                'tcp': TW.MilkTcpRecv,
-        }[transport_type]
+        Klass = receiver_class(transport_type)
         tport_recv = Klass(transport_address)
         tport_recv.init_storage_target(-1)
         return tport_recv
@@ -229,10 +240,15 @@ def test_emit_survives_recv_respawn(emit_addr, recv_addr):
         pass
 
 
-@_pmp(('emit_addr', 'recv_addr'),
-      [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
-       ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
-       ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
+@_pmp(
+        ('emit_addr', 'recv_addr'),
+        [  #
+                ('shm::x', 'shm::x'),
+                ('tcp::127.0.0.1:12345', 'tcp::12345'),
+                ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
+                ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346'),
+                ('udp::127.0.0.1:12346', 'udp::12346'),
+        ])
 def test_recv_survives_emit_respawn(emit_addr, recv_addr):
     arr = np.random.randn(60, 61).astype(np.float32)
     shm_recv = SHM('mproc_recv_relay', arr * 0, symcode=0)
@@ -241,11 +257,7 @@ def test_recv_survives_emit_respawn(emit_addr, recv_addr):
 
     def mkemit_mainthread():
         transport_type, transport_address = emit_addr.split('::')
-        Klass = {
-                'shm': TW.ImageStreamIOEmit,
-                'zmq': TW.ZmqEmit,
-                'tcp': TW.MilkTcpEmit,
-        }[transport_type]
+        Klass = emitter_class(transport_type)
         tport_emit = Klass(transport_address, shm_recv.IMAGE.md)
         tport_emit.init_storage_target(-1)
 

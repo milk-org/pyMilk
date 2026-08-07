@@ -65,7 +65,7 @@ void MilkTCPEmit::recreate_socket_()
 
     // Socket ops - emitting socket
     const int flag = 1;
-    fds_emit_local_ = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); // TODO return fatal
+    fds_emit_local_ = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // TODO return fatal
     ::setsockopt(fds_emit_local_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
     //const int timeout_ms = 300; // fail sends after 2s of unacknowledged data
     //::setsockopt(fds_emit_local_, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout_ms, sizeof(timeout_ms));
