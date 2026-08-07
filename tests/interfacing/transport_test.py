@@ -3,6 +3,10 @@ import typing as typ
 
 import pytest
 
+_pmp = pytest.mark.parametrize
+
+import os
+
 from pyMilk.interfacing.transport import CopybackComputeUnit
 from pyMilk.interfacing.shm import SHM
 import pyMilk.TransportWrap as TW
@@ -49,8 +53,16 @@ def test_copyback():
     s.destroy()
 
 
+# I need the multiprocessed to be fixturized, maybe
+# I need to encapsulate dakine in a termination event but also a "constructor terminated" event, which will allow avoiding shitty race conditions in the asserts
+# when stopping/restarting stuff
+
+# Implement unicast and multicast UDP.
+
+
 def multiprocessed_recvtransport_to_shm(recv_endpoint: str, mem_target: int,
-                                        event: Event):
+                                        event_termination: Event,
+                                        event_ready: Event | None = None):
 
     s = SHM('mproc_recv_relay', symcode=0)  # assert exists
 
@@ -65,11 +77,15 @@ def multiprocessed_recvtransport_to_shm(recv_endpoint: str, mem_target: int,
 
     count = 0
     while True:
-        if event.is_set():
-            event.clear()
+        if event_termination.is_set():
+            event_termination.clear()
             break
         ret = tport_recv.sync_barrier()
         print(f'sync_barrier returns {ret}')
+        # Wait after the first / receive timeout to confirm ready.
+        if event_ready:
+            event_ready.set()
+
         if ret != TW.SyncEnum.SUCCESS:
             continue
 
@@ -85,7 +101,8 @@ def multiprocessed_recvtransport_to_shm(recv_endpoint: str, mem_target: int,
 
 
 def multiprocessed_shm_to_emittransport(emit_endpoint: str, mem_target: int,
-                                        event: Event):
+                                        event_termination: Event,
+                                        event_ready: Event | None = None):
     s = SHM('mproc_emit_relay', symcode=0)
 
     transport_type, transport_address = emit_endpoint.split('::')
@@ -97,17 +114,20 @@ def multiprocessed_shm_to_emittransport(emit_endpoint: str, mem_target: int,
     tport_emit = Klass(transport_address, s.IMAGE.md)
     tport_emit.init_storage_target(mem_target)
 
+    if event_ready:
+        event_ready.set()
+
     count = 0
     while True:
-        if event.is_set():
-            event.clear()
+        if event_termination.is_set():
+            event_termination.clear()
             break
 
         arr = s.get_data(True, copy=False, timeout=0.05,
                          return_none_on_timeout=True)
         if arr is None:
             continue
-        print('Emit: received real data !')
+        print("Mproc'd emitter: received real data !")
         tport_emit.write(arr)
         tport_emit.move_and_publish_data(0.0)  # atime
         count += 1
@@ -117,69 +137,80 @@ def multiprocessed_shm_to_emittransport(emit_endpoint: str, mem_target: int,
     del tport_emit
 
 
-pmp = pytest.mark.parametrize
+def _recv_get_data(tport_recv):
+    ret = tport_recv.sync_barrier()
+    if ret == TW.SyncEnum.SUCCESS:
+        tport_recv.move_new_data_to_requested()
+        return tport_recv.copy()
+    elif ret == TW.SyncEnum.TIMEOUT:
+        return None
+
+    raise ValueError('Error on sync_barrier other than TIMEOUT')
 
 
-@pmp(('emit_addr', 'recv_addr'),
-     [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
-      ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
-      ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
+@_pmp(('emit_addr', 'recv_addr'),
+      [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
+       ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
+       ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
 def test_emit_survives_recv_respawn(emit_addr, recv_addr):
+    # Same as test_emit_survives_recv_respawn, except the recv transport is
+    # created/destroyed and driven directly in the main testing thread,
+    # instead of being dispatched to a multiprocessed instance.
     arr = np.random.randn(60, 61).astype(np.float32)
-    shm_emit = SHM('mproc_emit_relay', arr)
-    shm_recv = SHM('mproc_recv_relay', arr * 0)
+    shm_emit = SHM('mproc_emit_relay', arr, symcode=0)
 
     event_emit = Event()
-    event_recv = Event()
 
-    def mkemit():
-        return multiprocessing.Process(
+    def mkemit_subprocessed():
+        event_spool = Event()
+        p = multiprocessing.Process(
                 target=multiprocessed_shm_to_emittransport,
-                args=(emit_addr, -1, event_emit))
+                args=(emit_addr, -1, event_emit, event_spool))
+        p.start()
+        assert event_spool.wait(timeout=5.0)  # assert fails on timeout
 
-    def mkrecv():
-        return multiprocessing.Process(
-                target=multiprocessed_recvtransport_to_shm,
-                args=(recv_addr, -1, event_recv))
+        return p
 
-    te = mkemit()
-    te.start()
-    import time
-    time.sleep(0.1)  # We need to make sure, in the SHM case,
-    # that "emit" has created the SHM, since we can't spawn a recv on a non-existent SHM
-    # Or could we??
+    def mkrecv_mainthread():
+        transport_type, transport_address = recv_addr.split('::')
+        Klass = {
+                'shm': TW.ImageStreamIORecv,
+                'zmq': TW.ZmqRecv,
+                'tcp': TW.MilkTcpRecv,
+        }[transport_type]
+        tport_recv = Klass(transport_address)
+        tport_recv.init_storage_target(-1)
+        return tport_recv
+
+    te = mkemit_subprocessed()
 
     for kk in range(5):
-        tr = mkrecv()
-        tr.start()
-        time.sleep(2)  # Hides a race conditions in the restart...
+        tport_recv = mkrecv_mainthread()
+        # tport_recv needs a semflush !
+        while tport_recv.sync_barrier() == TW.SyncEnum.SUCCESS:
+            # Effectively a semflush - but also stale connections in the TCP variant.
+            # while tport_recv.sync_barrier() != TW.SyncEnum.TIMEOUT will NOT work for the TCP variant.
+            pass
 
         assert te.is_alive()
-
-        shm_recv._checkGrabSemaphore(
-        )  # Also hides a race condition in the restart
-        shm_recv.IMAGE.semflush(shm_recv.semID)
 
         # Send 100 sync'd frames
         for ll in range(100):
             arr = np.random.randn(60, 61).astype(np.float32)
+            arr[0, 0] = ll + kk * 1000
             shm_emit.set_data(arr)
-            print(f'Posted new data ({ll}).')
-            arr_returned = shm_recv.get_data(True, timeout=0.3,
-                                             return_none_on_timeout=True,
-                                             checkSemAndFlush=False)
+            print(f'Posted new data ({ll}) (sample={arr[0,0]}, {arr[0,1]}, {arr[0,2]})'
+                  )
+            arr_returned = _recv_get_data(tport_recv)
+            print(f'Tport received {None if arr_returned is None else arr_returned[0,0]}'
+                  )
 
             if ll > 1:  # TCP initialization quirks and timeout values
                 assert arr_returned is not None
                 np.testing.assert_equal(arr_returned, arr)
 
-        print('event_recv set')
-        #event_recv.set()
-        tr.kill(
-        )  # calling event_recv.set() induces a full timeout cycle and it's annoying. But this probably bypasses the destructor for shared resources
-        tr.join()
-
-        print('recv joined')
+        print('destroying recv transport')
+        del tport_recv
 
         # Send frames into oblivion
         for ll in range(10):
@@ -192,77 +223,84 @@ def test_emit_survives_recv_respawn(emit_addr, recv_addr):
     te.join()
 
     shm_emit.destroy()
-    shm_recv.destroy()
+    try:
+        os.remove('/tmp/ipcptr')
+    except FileNotFoundError:
+        pass
 
 
-@pmp(('emit_addr', 'recv_addr'),
-     [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
-      ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
-      ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
-def test_transport_recv_survives_emit_respawn(emit_addr, recv_addr):
+@_pmp(('emit_addr', 'recv_addr'),
+      [('shm::x', 'shm::x'), ('tcp::127.0.0.1:12345', 'tcp::12345'),
+       ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
+       ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346')])
+def test_recv_survives_emit_respawn(emit_addr, recv_addr):
     arr = np.random.randn(60, 61).astype(np.float32)
-    shm_emit = SHM('mproc_emit_relay', arr)
-    shm_recv = SHM('mproc_recv_relay', arr * 0)
+    shm_recv = SHM('mproc_recv_relay', arr * 0, symcode=0)
 
-    event_emit = Event()
     event_recv = Event()
 
-    def mkemit():
-        return multiprocessing.Process(
-                target=multiprocessed_shm_to_emittransport,
-                args=(emit_addr, -1, event_emit))
+    def mkemit_mainthread():
+        transport_type, transport_address = emit_addr.split('::')
+        Klass = {
+                'shm': TW.ImageStreamIOEmit,
+                'zmq': TW.ZmqEmit,
+                'tcp': TW.MilkTcpEmit,
+        }[transport_type]
+        tport_emit = Klass(transport_address, shm_recv.IMAGE.md)
+        tport_emit.init_storage_target(-1)
 
-    def mkrecv():
-        return multiprocessing.Process(
+        return tport_emit
+
+    def mkrecv_subprocessed():
+        event_spool = Event()
+        p = multiprocessing.Process(
                 target=multiprocessed_recvtransport_to_shm,
-                args=(recv_addr, -1, event_recv))
+                args=(recv_addr, -1, event_recv, event_spool))
+        p.start()
+        assert event_spool.wait(timeout=5.0)  # assert fails on timeout
+        return p
 
     for kk in range(5):
-        te = mkemit()
-        # TODO the emit transport authoritatively re-creates the SHM.
-        # TODO so either -- it shouldn't.
-        # TODO or we should systematically have autorelink capability.
-        # TODO This causes failure in the SHM case.
-        te.start()
+        te = mkemit_mainthread()
 
+        # Needs posteriority of recv instantiation for some transports.
         if kk == 0:
-            _ensure_shm_exists('x', timeout=1.0)
-            tr = mkrecv()
-            tr.start()
+            #_ensure_shm_exists('x', timeout=1.0)
+            tr = mkrecv_subprocessed()
             shm_recv._checkGrabSemaphore(
             )  # Also hides a race condition in the restart
             shm_recv.IMAGE.semflush(shm_recv.semID)
-
-        time.sleep(2)
 
         assert tr.is_alive()
 
         # Send 100 sync'd frames
         for ll in range(100):
             arr = np.random.randn(60, 61).astype(np.float32)
-            shm_emit.set_data(arr)
+            arr[0, 0] = ll + kk * 1000
+            te.write(arr)
+            te.move_and_publish_data(0.0)
+
             print(f'Posted new data ({ll})')
-            arr_returned = shm_recv.get_data(True, timeout=0.3,
+            arr_returned = shm_recv.get_data(True, timeout=1.5,
                                              return_none_on_timeout=True,
                                              checkSemAndFlush=False)
+            print(f'received {None if arr_returned is None else arr[0,0]}...')
 
-            if ll > 1:  # TCP initialization quirks and timeout values
+            if ll > 0:  # TCP initialization quirks and timeout values
                 assert arr_returned is not None
                 np.testing.assert_equal(arr_returned, arr)
 
         print('killing emit')
-        te.kill(
-        )  # calling event_recv.set() induces a full timeout cycle and it's annoying. But this probably bypasses the destructor for shared resources
-        te.join()
-
-        print('emit joined')
+        del te
 
     event_recv.set()
     tr.join()
 
-    shm_emit.destroy()
     shm_recv.destroy()
-
+    try:
+        os.remove('/tmp/ipcptr')
+    except FileNotFoundError:
+        pass
     try:
         x = SHM('x')
         x.destroy()
