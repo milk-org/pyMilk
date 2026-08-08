@@ -50,6 +50,9 @@ MilkUDPRecv::MilkUDPRecv(const char *name)
 
     // Always join the default multicast group so multicast senders can
     // reach this receiver without any additional configuration.
+    // TODO this is a very poor mcast implementation.
+    // TODO each traffic should be its own group rather than port on same group
+    // TODO to avoid spamming LAN.
     join_multicast_group_(::inet_addr(MILK_UDP_DEFAULT_MCAST_GROUP));
 
     dgram_buffer_ = (uint8_t *) malloc(sizeof(MILK_WIRE_HEADER) + DATAGRAM_CHUNK_SIZE);
