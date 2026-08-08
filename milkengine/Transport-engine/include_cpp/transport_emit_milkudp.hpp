@@ -25,6 +25,7 @@ class MilkUDPEmit: public EmitTransport
     int fds_emit_local_ = -1; // Receiving socket
     //bool needs_tcp_reconnect_ = true;
     struct sockaddr_in sockaddr_connect_ = {0};
+    bool is_multicast_ = false;
 
     // UDP housekeeping
     MILK_WIRE_HEADER stable_hdr_ = {0};

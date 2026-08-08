@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
@@ -46,6 +47,10 @@ MilkUDPRecv::MilkUDPRecv(const char *name)
     };
 
     ::bind(fds_recv_local_, (sockaddr *)(&sock_server), sizeof(sock_server));
+
+    // Always join the default multicast group so multicast senders can
+    // reach this receiver without any additional configuration.
+    join_multicast_group_(::inet_addr(MILK_UDP_DEFAULT_MCAST_GROUP));
 
     dgram_buffer_ = (uint8_t *) malloc(sizeof(MILK_WIRE_HEADER) + DATAGRAM_CHUNK_SIZE);
 
@@ -90,6 +95,21 @@ MilkUDPRecv::~MilkUDPRecv()
 void MilkUDPRecv::print_type()
 {
     printf("This is a MILK UDP RECV transport\n");
+}
+
+void MilkUDPRecv::join_multicast_group_(in_addr_t group_addr)
+{
+    ip_mreq mreq{};
+    mreq.imr_multiaddr.s_addr = group_addr;
+    mreq.imr_interface.s_addr = ::htonl(INADDR_ANY);
+
+    if(::setsockopt(fds_recv_local_, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
+                    sizeof(mreq)) < 0)
+    {
+        printf("MilkUDPRecv - failed to join multicast group (%s)\n",
+               strerror(errno));
+        fflush(stdout);
+    }
 }
 
 void MilkUDPRecv::deferred_init()

@@ -158,6 +158,9 @@ def _recv_get_data(tport_recv):
     raise ValueError('Error on sync_barrier other than TIMEOUT')
 
 
+MILK_UDP_DEFAULT_MCAST_GROUP = "239.72.55.1"
+
+
 @_pmp(
         ('emit_addr', 'recv_addr'),
         [  #
@@ -166,6 +169,7 @@ def _recv_get_data(tport_recv):
                 ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
                 ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346'),
                 ('udp::127.0.0.1:12346', 'udp::12346'),
+                (f'udp::{MILK_UDP_DEFAULT_MCAST_GROUP}:12346', 'udp::12346'),
         ])
 def test_emit_survives_recv_respawn(emit_addr, recv_addr):
     # Same as test_emit_survives_recv_respawn, except the recv transport is
@@ -248,6 +252,7 @@ def test_emit_survives_recv_respawn(emit_addr, recv_addr):
                 ('zmq::ipc:///tmp/ipcptr', 'zmq::ipc:///tmp/ipcptr'),
                 ('zmq::tcp://127.0.0.1:12346', 'zmq::tcp://127.0.0.1:12346'),
                 ('udp::127.0.0.1:12346', 'udp::12346'),
+                (f'udp::{MILK_UDP_DEFAULT_MCAST_GROUP}:12346', 'udp::12346'),
         ])
 def test_recv_survives_emit_respawn(emit_addr, recv_addr):
     arr = np.random.randn(60, 61).astype(np.float32)

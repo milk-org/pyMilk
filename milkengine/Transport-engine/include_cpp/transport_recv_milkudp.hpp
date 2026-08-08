@@ -24,6 +24,7 @@ class MilkUDPRecv: public RecvTransport
     // or FAILED-due-to-short-datagram, bytes_received holds the recvfrom()
     // return value.
     SyncEnum recv_datagram_(ssize_t &bytes_received);
+    void join_multicast_group_(in_addr_t group_addr);
 
     IMAGE image_ = {};
     bool needs_deferred_init_ = true; // Deferred memory init after the first packets are received

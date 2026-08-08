@@ -39,6 +39,7 @@ MilkUDPEmit::MilkUDPEmit(const char *name, IMAGE_METADATA *md_request)
         .sin_port = ::htons(port),
         .sin_addr = {.s_addr = ::inet_addr(ipv4.c_str())}
     };
+    is_multicast_ = IN_MULTICAST(ntohl(sockaddr_connect_.sin_addr.s_addr));
 
     // Populate stable wire header fields once at construction.
     // Use topic as the ZMQ topic frame (frame 0) so subscribers filtering
@@ -86,6 +87,13 @@ void MilkUDPEmit::recreate_socket_()
     setsockopt(fds_emit_local_, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &flag,
                sizeof(flag));
 #endif
+
+    if(is_multicast_)
+    {
+        // Cap how many router hops a multicast datagram may travel.
+        int ttl = MILK_UDP_DEFAULT_MCAST_TTL;
+        ::setsockopt(fds_emit_local_, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
+    }
 }
 
 

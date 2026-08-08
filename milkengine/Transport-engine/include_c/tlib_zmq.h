@@ -20,6 +20,10 @@ extern "C" {
 // Lower bound on allowable payload per UDP datagram
 constexpr size_t DATAGRAM_CHUNK_SIZE = 62 * 1024;
 
+// Multicast defaults
+constexpr const char *MILK_UDP_DEFAULT_MCAST_GROUP = "239.72.55.1"; // org-local scope (RFC 2365)
+constexpr int         MILK_UDP_DEFAULT_MCAST_TTL    = 1;            // cap router hops (local subnet only)
+
 /* ---------------------------------------------------------------------------
  * MILK_WIRE_HEADER
  *
