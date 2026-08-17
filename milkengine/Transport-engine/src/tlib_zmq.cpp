@@ -40,7 +40,8 @@ MILK_ZMQ_CONTEXT milk_zmq_pub_init(void *ptr, uint64_t data_size,
 }
 
 MILK_ZMQ_CONTEXT milk_zmq_sub_init(void *ptr, uint64_t data_size,
-                                   const char *endpoint, const char *topic)
+                                   const char *endpoint, const char *topic,
+                                   int rcvtimeo_ms)
 {
     MILK_ZMQ_CONTEXT ctx = {0};
 
@@ -57,7 +58,6 @@ MILK_ZMQ_CONTEXT milk_zmq_sub_init(void *ptr, uint64_t data_size,
     ctx.data_size = data_size;
     ctx.is_pub    = 0;
 
-    int rcvtimeo_ms = 1000; // or a parameter passed in
     zmq_setsockopt(ctx.socket, ZMQ_RCVTIMEO, &rcvtimeo_ms, sizeof(rcvtimeo_ms));
 
     return ctx;

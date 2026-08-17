@@ -298,7 +298,10 @@ def test_recv_survives_emit_respawn(emit_addr, recv_addr):
             te.move_and_publish_data(0.0)
 
             print(f'Posted new data ({ll})')
-            arr_returned = shm_recv.get_data(True, timeout=1.5,
+            # timeout on get_data must be longer than
+            # static constexpr std::chrono::milliseconds DEFAULT_TIMEOUT{100};
+            # that is passed to all receivers
+            arr_returned = shm_recv.get_data(True, timeout=0.5,
                                              return_none_on_timeout=True,
                                              checkSemAndFlush=False)
             print(f'received {None if arr_returned is None else arr[0,0]}...')

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <string>
 #include <cstring>
 
@@ -17,7 +18,8 @@ ZmqRecv::ZmqRecv(const char *name)
     std::string endpoint = (pos != std::string::npos) ? s.substr(0, pos) : s;
     std::string topic    = (pos != std::string::npos) ? s.substr(pos + 1) : "";
 
-    milk_zmq_ctx_ = milk_zmq_sub_init(nullptr, 0, endpoint.c_str(), topic.c_str());
+    milk_zmq_ctx_ = milk_zmq_sub_init(nullptr, 0, endpoint.c_str(), topic.c_str(),
+                                      std::chrono::duration_cast<std::chrono::milliseconds>(DEFAULT_TIMEOUT).count());
 }
 
 void ZmqRecv::init_storage_target(InternalStorageEnum req)

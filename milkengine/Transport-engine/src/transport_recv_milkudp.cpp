@@ -30,7 +30,9 @@ MilkUDPRecv::MilkUDPRecv(const char *name)
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_NO_CHECK, &flag, sizeof(flag));
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
-    timeval tv{ .tv_sec = 2, .tv_usec = 0 }; // Timeout 2 seconds
+    const auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(DEFAULT_TIMEOUT);
+    const timeval tv{ .tv_sec = static_cast<time_t>(timeout_us.count() / 1'000'000),
+                      .tv_usec = static_cast<suseconds_t>(timeout_us.count() % 1'000'000) };
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #ifdef SO_ATTACH_REUSEPORT_CBPF
     setsockopt(fds_recv_local_, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &flag,

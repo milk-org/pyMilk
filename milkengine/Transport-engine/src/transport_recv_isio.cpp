@@ -95,7 +95,14 @@ SyncEnum ImageStreamIORecv::sync_barrier()
     // get current time
     struct timespec ts;
     clock_gettime(CLOCK_ISIO, &ts);
-    ts.tv_sec += 1;
+    const auto timeout_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(DEFAULT_TIMEOUT);
+    ts.tv_sec += std::chrono::duration_cast<std::chrono::seconds>(timeout_ns).count();
+    ts.tv_nsec += (timeout_ns % std::chrono::seconds(1)).count();
+    if(ts.tv_nsec >= 1'000'000'000) // carry: nsec must stay within [0, 1e9)
+    {
+        ts.tv_sec += 1;
+        ts.tv_nsec -= 1'000'000'000;
+    }
 
     int ret = ImageStreamIO_check_image_endpoint_inode(&image_);
     if (ret == IMAGESTREAMIO_INODE) {

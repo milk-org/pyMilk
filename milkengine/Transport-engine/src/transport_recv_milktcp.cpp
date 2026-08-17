@@ -27,7 +27,9 @@ MilkTCPRecv::MilkTCPRecv(const char *name)
     ::setsockopt(fds_recv_local_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
-    timeval tv{ .tv_sec = 2, .tv_usec = 0 };
+    const auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(DEFAULT_TIMEOUT);
+    const timeval tv{ .tv_sec = static_cast<time_t>(timeout_us.count() / 1'000'000),
+                      .tv_usec = static_cast<suseconds_t>(timeout_us.count() % 1'000'000) };
     ::setsockopt(fds_recv_local_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     sockaddr_in sock_server =

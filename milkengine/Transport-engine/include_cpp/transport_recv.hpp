@@ -2,14 +2,20 @@
 #define TRANSPORT_RECV_HPP
 
 //#include <cstdio>
+#include <chrono>
 #include <cstring>
 #include "ImageStreamIO/ImageStreamIO.h"
 
 #include "transport_enums.h"
 
+
+
 class RecvTransport
 {
   public:
+    // Default blocking-receive timeout, shared by all transport implementations
+    static constexpr std::chrono::milliseconds DEFAULT_TIMEOUT{100};
+
     RecvTransport(const char *name) {strcpy(name_, name);};
 
     // Public interface - read-only

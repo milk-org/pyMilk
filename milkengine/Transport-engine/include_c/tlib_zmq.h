@@ -98,9 +98,11 @@ MILK_ZMQ_CONTEXT milk_zmq_pub_init(void *ptr, uint64_t data_size,
  * Create a subscriber connected to endpoint.
  * topic is the image name to filter on; pass "" to receive all streams.
  * ptr/data_size is the destination buffer; must be >= the sender's imdatamemsize.
+ * rcvtimeo_ms is the ZMQ_RCVTIMEO applied to the socket, in milliseconds.
  */
 MILK_ZMQ_CONTEXT milk_zmq_sub_init(void *ptr, uint64_t data_size,
-                                   const char *endpoint, const char *topic);
+                                   const char *endpoint, const char *topic,
+                                   int rcvtimeo_ms);
 
 /** Close socket and destroy zmq context. */
 void milk_zmq_teardown(MILK_ZMQ_CONTEXT *ctx);
