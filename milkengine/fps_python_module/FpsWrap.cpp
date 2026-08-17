@@ -4,10 +4,43 @@
 #include <nanobind/stl/map.h>
 #include <nanobind/stl/pair.h>
 
+#include <fstream>
+#include <string>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "pyFps.hpp"
 
 namespace nb = nanobind;
 using namespace nanobind::literals;
+
+namespace
+{
+// getpgid() succeeds for zombie processes (PID still valid until reaped by
+// its parent), so a finished-but-unreaped process would otherwise be
+// reported as still running. Check /proc/<pid>/stat for zombie state 'Z'.
+bool pid_is_running(pid_t pid)
+{
+    if ((pid <= 0) || (getpgid(pid) < 0))
+    {
+        return false;
+    }
+
+    std::ifstream stat_file("/proc/" + std::to_string(pid) + "/stat");
+    std::string   line;
+    if (!stat_file || !std::getline(stat_file, line))
+    {
+        // Can't inspect state (e.g. non-Linux or /proc unavailable): fall
+        // back to the getpgid()-only result.
+        return true;
+    }
+
+    // Format is "pid (comm) state ...". comm may contain ')' so search from
+    // the end for the closing parenthesis.
+    const auto closing = line.rfind(')');
+    return (closing == std::string::npos) || (line[closing + 2] != 'Z');
+}
+} // namespace
 
 
 int fps_value_to_key(pyFps             &cls,
@@ -20,37 +53,38 @@ int fps_value_to_key(pyFps             &cls,
 
     switch(switch_fps_type)
     {
-    case FPS_type::ONOFF:
-        return functionparameter_SetParamValue_ONOFF(cls, key.c_str(),
-                nb::cast<bool>(value));
-    case FPS_type::INT32:
-    case FPS_type::UINT32:
-    case FPS_type::INT64:
-        return functionparameter_SetParamValue_INT64(cls, key.c_str(), nb::cast<int64_t>(value));
-    case FPS_type::UINT64:
-        return functionparameter_SetParamValue_UINT64(cls, key.c_str(),
-                nb::cast<uint64_t>(value));
-    case FPS_type::FLOAT32:
-        return functionparameter_SetParamValue_FLOAT32(cls, key.c_str(),
-                nb::cast<float>(value));
-    case FPS_type::FLOAT64:
-        return functionparameter_SetParamValue_FLOAT64(cls, key.c_str(),
-                nb::cast<double>(value));
-    case FPS_type::STRING:
-    case FPS_type::STREAMNAME:
-    case FPS_type::DIRNAME:
-    case FPS_type::EXECFILENAME:
-    case FPS_type::FILENAME:
-    case FPS_type::FITSFILENAME:
-        return functionparameter_SetParamValue_STRING(
-                   cls,
-                   key.c_str(),
-                   nb::cast<std::string>(value).c_str());
-    case FPS_type::TIMESPEC:
-        return functionparameter_SetParamValue_TIMESPEC(cls, key.c_str(),
-                nb::cast<double>(value));
-    default:
-        return EXIT_FAILURE;
+        case FPS_type::ONOFF:
+            return functionparameter_SetParamValue_ONOFF(cls, key.c_str(),
+                    nb::cast<bool>(value));
+        case FPS_type::INT32:
+        case FPS_type::UINT32:
+        case FPS_type::INT64:
+            return functionparameter_SetParamValue_INT64(cls, key.c_str(),
+                    nb::cast<int64_t>(value));
+        case FPS_type::UINT64:
+            return functionparameter_SetParamValue_UINT64(cls, key.c_str(),
+                    nb::cast<uint64_t>(value));
+        case FPS_type::FLOAT32:
+            return functionparameter_SetParamValue_FLOAT32(cls, key.c_str(),
+                    nb::cast<float>(value));
+        case FPS_type::FLOAT64:
+            return functionparameter_SetParamValue_FLOAT64(cls, key.c_str(),
+                    nb::cast<double>(value));
+        case FPS_type::STRING:
+        case FPS_type::STREAMNAME:
+        case FPS_type::DIRNAME:
+        case FPS_type::EXECFILENAME:
+        case FPS_type::FILENAME:
+        case FPS_type::FITSFILENAME:
+            return functionparameter_SetParamValue_STRING(
+                       cls,
+                       key.c_str(),
+                       nb::cast<std::string>(value).c_str());
+        case FPS_type::TIMESPEC:
+            return functionparameter_SetParamValue_TIMESPEC(cls, key.c_str(),
+                    nb::cast<double>(value));
+        default:
+            return EXIT_FAILURE;
     }
 }
 
@@ -59,33 +93,33 @@ fps_value_from_key(pyFps &cls, const std::string &key, const FPS_type fps_type)
 {
     switch(fps_type)
     {
-    case FPS_type::ONOFF:
-        return nb::bool_(functionparameter_GetParamValue_ONOFF(cls, key.c_str()));
-    case FPS_type::INT32:
-    case FPS_type::UINT32:
-    case FPS_type::INT64:
-        return nb::int_(
-                   functionparameter_GetParamValue_INT64(cls, key.c_str()));
-    case FPS_type::UINT64:
-        return nb::int_(
-                   functionparameter_GetParamValue_UINT64(cls, key.c_str()));
-    case FPS_type::FLOAT32:
-        return nb::float_(
-                   functionparameter_GetParamValue_FLOAT32(cls, key.c_str()));
-    case FPS_type::FLOAT64:
-        return nb::float_(
-                   functionparameter_GetParamValue_FLOAT64(cls, key.c_str()));
-    case FPS_type::STRING:
-    case FPS_type::STREAMNAME:
-    case FPS_type::DIRNAME:
-    case FPS_type::EXECFILENAME:
-    case FPS_type::FILENAME:
-    case FPS_type::FITSFILENAME:
-        return nb::str(functionparameter_GetParamPtr_STRING(cls, key.c_str()));
-    case FPS_type::TIMESPEC:
-        return nb::float_(functionparameter_GetParamValue_TIMESPEC(cls, key.c_str()));
-    default:
-        return nb::none();
+        case FPS_type::ONOFF:
+            return nb::bool_(functionparameter_GetParamValue_ONOFF(cls, key.c_str()));
+        case FPS_type::INT32:
+        case FPS_type::UINT32:
+        case FPS_type::INT64:
+            return nb::int_(
+                       functionparameter_GetParamValue_INT64(cls, key.c_str()));
+        case FPS_type::UINT64:
+            return nb::int_(
+                       functionparameter_GetParamValue_UINT64(cls, key.c_str()));
+        case FPS_type::FLOAT32:
+            return nb::float_(
+                       functionparameter_GetParamValue_FLOAT32(cls, key.c_str()));
+        case FPS_type::FLOAT64:
+            return nb::float_(
+                       functionparameter_GetParamValue_FLOAT64(cls, key.c_str()));
+        case FPS_type::STRING:
+        case FPS_type::STREAMNAME:
+        case FPS_type::DIRNAME:
+        case FPS_type::EXECFILENAME:
+        case FPS_type::FILENAME:
+        case FPS_type::FITSFILENAME:
+            return nb::str(functionparameter_GetParamPtr_STRING(cls, key.c_str()));
+        case FPS_type::TIMESPEC:
+            return nb::float_(functionparameter_GetParamValue_TIMESPEC(cls, key.c_str()));
+        default:
+            return nb::none();
     }
 }
 
@@ -105,57 +139,57 @@ NB_MODULE(FpsWrap, m)
     m.doc() = "FpsWrap library module";
 
     nb::enum_<FPS_status>(m, "FPS_status")
-        .value("CONF", FPS_status::CONF)
-        .value("RUN", FPS_status::RUN)
-        .value("CMDCONF", FPS_status::CMDCONF)
-        .value("CMDRUN", FPS_status::CMDRUN)
-        .value("RUNLOOP", FPS_status::RUNLOOP)
-        .value("CHECKOK", FPS_status::CHECKOK)
-        .value("TMUXCONF", FPS_status::TMUXCONF)
-        .value("TMUXRUN", FPS_status::TMUXRUN)
-        .value("TMUXCTRL", FPS_status::TMUXCTRL)
-        .export_values();
+    .value("CONF", FPS_status::CONF)
+    .value("RUN", FPS_status::RUN)
+    .value("CMDCONF", FPS_status::CMDCONF)
+    .value("CMDRUN", FPS_status::CMDRUN)
+    .value("RUNLOOP", FPS_status::RUNLOOP)
+    .value("CHECKOK", FPS_status::CHECKOK)
+    .value("TMUXCONF", FPS_status::TMUXCONF)
+    .value("TMUXRUN", FPS_status::TMUXRUN)
+    .value("TMUXCTRL", FPS_status::TMUXCTRL)
+    .export_values();
 
     nb::enum_<FPS_type>(m, "FPS_type")
-        .value("AUTO", FPS_type::AUTO)
-        .value("UNDEF", FPS_type::UNDEF)
-        .value("INT32", FPS_type::INT32)
-        .value("UINT32", FPS_type::UINT32)
-        .value("INT64", FPS_type::INT64)
-        .value("UINT64", FPS_type::UINT64)
-        .value("FLOAT32", FPS_type::FLOAT32)
-        .value("FLOAT64", FPS_type::FLOAT64)
-        .value("PID", FPS_type::PID)
-        .value("TIMESPEC", FPS_type::TIMESPEC)
-        .value("FILENAME", FPS_type::FILENAME)
-        .value("FITSFILENAME", FPS_type::FITSFILENAME)
-        .value("EXECFILENAME", FPS_type::EXECFILENAME)
-        .value("DIRNAME", FPS_type::DIRNAME)
-        .value("STREAMNAME", FPS_type::STREAMNAME)
-        .value("STRING", FPS_type::STRING)
-        .value("ONOFF", FPS_type::ONOFF)
-        .value("PROCESS", FPS_type::PROCESS)
-        .value("FPSNAME", FPS_type::FPSNAME)
-        .export_values();
+    .value("AUTO", FPS_type::AUTO)
+    .value("UNDEF", FPS_type::UNDEF)
+    .value("INT32", FPS_type::INT32)
+    .value("UINT32", FPS_type::UINT32)
+    .value("INT64", FPS_type::INT64)
+    .value("UINT64", FPS_type::UINT64)
+    .value("FLOAT32", FPS_type::FLOAT32)
+    .value("FLOAT64", FPS_type::FLOAT64)
+    .value("PID", FPS_type::PID)
+    .value("TIMESPEC", FPS_type::TIMESPEC)
+    .value("FILENAME", FPS_type::FILENAME)
+    .value("FITSFILENAME", FPS_type::FITSFILENAME)
+    .value("EXECFILENAME", FPS_type::EXECFILENAME)
+    .value("DIRNAME", FPS_type::DIRNAME)
+    .value("STREAMNAME", FPS_type::STREAMNAME)
+    .value("STRING", FPS_type::STRING)
+    .value("ONOFF", FPS_type::ONOFF)
+    .value("PROCESS", FPS_type::PROCESS)
+    .value("FPSNAME", FPS_type::FPSNAME)
+    .export_values();
 
     nb::enum_<FPS_flags>(m, "FPS_flags")
-	.value("DEFAULT_INPUT", FPS_flags::DEFAULT_INPUT)
-	.value("DEFAULT_OUTPUT", FPS_flags::DEFAULT_OUTPUT)
-	.value("DEFAULT_INPUT_STREAM", FPS_flags::DEFAULT_INPUT_STREAM)
-	.value("DEFAULT_OUTPUT_STREAM", FPS_flags::DEFAULT_OUTPUT_STREAM)
+    .value("DEFAULT_INPUT", FPS_flags::DEFAULT_INPUT)
+    .value("DEFAULT_OUTPUT", FPS_flags::DEFAULT_OUTPUT)
+    .value("DEFAULT_INPUT_STREAM", FPS_flags::DEFAULT_INPUT_STREAM)
+    .value("DEFAULT_OUTPUT_STREAM", FPS_flags::DEFAULT_OUTPUT_STREAM)
     .value("DEFAULT_STATUS", FPS_flags::DEFAULT_STATUS)
-	.export_values();
+    .export_values();
 
 
     nb::class_<timespec>(m, "timespec")
-        .def(nb::init<time_t, long>())
-        .def_rw("tv_sec", &timespec::tv_sec)
-        .def_rw("tv_nsec", &timespec::tv_nsec);
+    .def(nb::init<time_t, long>())
+    .def_rw("tv_sec", &timespec::tv_sec)
+    .def_rw("tv_nsec", &timespec::tv_nsec);
 
     nb::class_<pyFps>(m, "fps")
-        // read-only constructor
-        .def(nb::init<std::string>(),
-             R"pbdoc(Read / connect to existing shared memory FPS
+    // read-only constructor
+    .def(nb::init<std::string>(),
+         R"pbdoc(Read / connect to existing shared memory FPS
 Parameters:
     name     [in]:  the name of the shared memory file to connect
 )pbdoc",
@@ -333,14 +367,13 @@ Return:
             "CONFrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->confpid;
-                if ((getpgid(pid) >= 0) && (pid > 0))
+                if (pid_is_running(pid))
                 {
                     return 1;
                 }
                 else // PID not active
                 {
-                    if (cls->md->status &
-                        FUNCTION_PARAMETER_STRUCT_STATUS_CMDCONF)
+                    if (cls->md->status & FUNCTION_PARAMETER_STRUCT_STATUS_CMDCONF)
                     {
                         // not clean exit
                         return -1;
@@ -361,7 +394,7 @@ Return:
             "RUNrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->runpid;
-                if ((getpgid(pid) >= 0) && (pid > 0))
+                if (pid_is_running(pid))
                 {
                     return 1;
                 }
