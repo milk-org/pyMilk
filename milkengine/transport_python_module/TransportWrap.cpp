@@ -20,10 +20,13 @@ NB_MODULE(TransportWrap, m)
 {
     m.doc() = "TransportWrap library module";
 
+    if (!nb::type<timespec>().is_valid())
+    { // Possible multiple registration warning
     nb::class_<timespec>(m, "timespec")
     .def(nb::init<time_t, long>())
     .def_rw("tv_sec", &timespec::tv_sec)
     .def_rw("tv_nsec", &timespec::tv_nsec);
+    }
 
     nb::enum_<InternalStorageEnum>(m, "InternalStorageEnum")
     .value("UNINITIALIZED", InternalStorageEnum::UNINITIALIZED)

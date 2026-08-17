@@ -185,11 +185,7 @@ class pyFps
             std::cout << "Done" << std::endl;
             connect();
         }
-        else
-        {
-            connect();
-            read_keys();
-        }
+        read_keys();
         return EXIT_SUCCESS;
     }
 

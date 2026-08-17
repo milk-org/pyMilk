@@ -19,18 +19,21 @@ NB_MODULE(ProcessInfoWrap, m)
 {
     m.doc() = "ProcessInfoWrap library module";
 
+    if (!nb::type<timespec>().is_valid())
+    { // Possible multiple registration warning
     nb::class_<timespec>(m, "timespec")
-        .def(nb::init<time_t, long>())
-        .def_rw("tv_sec", &timespec::tv_sec)
-        .def_rw("tv_nsec", &timespec::tv_nsec);
+    .def(nb::init<time_t, long>())
+    .def_rw("tv_sec", &timespec::tv_sec)
+    .def_rw("tv_nsec", &timespec::tv_nsec);
+    }
 
     nb::class_<pyProcessInfo>(m, "processinfo")
-        .def(nb::init<>(),
-             R"pbdoc(Construct a empty Process Info object
+    .def(nb::init<>(),
+         R"pbdoc(Construct a empty Process Info object
 )pbdoc")
 
-        .def(nb::init<const char *, int>(),
-             R"pbdoc(Construct a new Process Info object
+    .def(nb::init<const char *, int>(),
+         R"pbdoc(Construct a new Process Info object
 
 Parameters:
     pname : name of the Process Info object (human-readable)
