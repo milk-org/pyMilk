@@ -287,6 +287,8 @@ class SHM:
                 self.shape
         """
 
+        data = _ensure_native_byteorder(data)
+
         self.nptype = data.dtype
         self.shape = data.shape
         self.nDim = len(self.shape)
@@ -627,6 +629,8 @@ class SHM:
         if autorelink_if_need:
             self._attempt_autorelink_if_needed()
 
+        data = _ensure_native_byteorder(data)
+
         if check_dt:
             data = data.astype(self.nptype)
 
@@ -850,6 +854,12 @@ class SHM:
             print(f"{p3} < 1, {p4} > 1 pre/post diff.")
 
         return output
+
+
+def _ensure_native_byteorder(data: xp_ndarray) -> xp_ndarray:
+    if not data.dtype.isnative:
+        data = data.astype(data.dtype.newbyteorder('='), copy=True)
+    return data
 
 
 def check_SHM_name(fname: str) -> str:
