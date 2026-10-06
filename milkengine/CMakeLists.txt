@@ -20,6 +20,9 @@ set(USE_NCURSES OFF CACHE BOOL "Build with ncurses" FORCE)
 set(USE_CLI OFF CACHE BOOL "Build with CLI" FORCE)
 set(USE_STATIC_LTO OFF CACHE BOOL "Build with LTO" FORCE)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # =======================================
 # BUILD TYPE
 # =======================================
@@ -37,5 +40,3 @@ add_subdirectory(ProcessInfo-engine)
 add_subdirectory(Fps-engine)
 add_subdirectory(pinfo_python_module)
 add_subdirectory(fps_python_module)
-#add_subdirectory(ProcessInfo)
-#add_subdirectory(Fps)

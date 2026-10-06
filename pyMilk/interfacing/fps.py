@@ -94,6 +94,10 @@ class FPS:
             raise FPSDoesntExistError from exc
         self.key_types: typ.Dict[str, int] = self.fps.keys
 
+        self.procinfo: ProcessInfoFps | None = None
+        if 'procinfo.enabled' in self.key_types:
+            self.procinfo = ProcessInfoFps(self)
+
     def __str__(self) -> str:
         # FIXME append tmux status
         return f'{self.name} | CONF: {("N", "Y")[self.conf_isrunning()]} | RUN: {("N", "Y")[self.run_isrunning()]}'
@@ -103,6 +107,17 @@ class FPS:
             raise FPSErrnoError(
                     f'FPS {self.name}: errno raise code {retcode} with info {info}.'
             )
+
+    def is_valid(self) -> bool:
+        fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{self.name}.fps.shm'
+        if not os.path.isfile(fps_filepath):
+            return False
+        try:
+            _fps = CPTFPS(self.name, True)  # test that no error
+        except:
+            return False
+
+        return True
 
     def add_param(self, key: str, comment: str, datatype: int,
                   flags: int = FPS_flags.DEFAULT_INPUT) -> None:
@@ -126,6 +141,10 @@ class FPS:
 
     __setitem__ = set_param
     __getitem__ = get_param
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.key_types
+
     '''
     We don't have that in pyFPS!
     def tmux_isrunning(self) -> bool:
@@ -190,7 +209,12 @@ class FPS:
         os.remove(fps_filepath)
 
 
-class FPSManager:
+class FPSCollection():
+    # TODO Non-regex FPSManager base class
+    ...
+
+
+class FPSManager(FPSCollection):
 
     def __init__(self, fps_name_glob: str = '*',
                  fps_keyword_glob: str = '*') -> None:
@@ -421,6 +445,44 @@ class SmartAttributesFPS(FPS):
             #setattr(self, '___' + key, getattr(self, key))
             setattr(self.__class__, key,
                     property(self._prop_fget(key), self._prop_fset(key)))
+
+
+class ProcessInfoFps:
+
+    RTprio: int
+    cset: str
+    taskset: str
+    NBthread: int
+    enabled: bool
+    loopcntMax: int
+    triggermode: int
+    triggersname: str
+    MeasureTiming: bool
+    semindexrequested: int
+    triggerdelay: float
+    triggertimeout: float
+
+    def __init__(self, parent_fps: FPS) -> None:
+        self._fps = parent_fps
+
+        # create the properties
+        for key in self.__annotations__:
+            setattr(self.__class__, key,
+                    property(self._prop_fget(key), self._prop_fset(key)))
+
+    def _prop_fget(self, prop_name: str):
+
+        def fget(self: ProcessInfoFps):
+            return FPS.__getitem__(self._fps, 'procinfo.' + prop_name)
+
+        return fget
+
+    def _prop_fset(self, prop_name: str):
+
+        def fset(self: ProcessInfoFps, value):
+            FPS.__setitem__(self._fps, 'procinfo.' + prop_name, value)
+
+        return fset
 
 
 class SmartAttributesFPSAutoMetadata(SmartAttributesFPS):

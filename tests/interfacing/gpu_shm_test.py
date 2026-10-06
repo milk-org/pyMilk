@@ -9,10 +9,12 @@ from pyMilk.interfacing.shm import SHM, check_SHM_name
 from pyMilk import errors
 
 from ..conftestaux.async_shm_fixtures import serve_external_shm
+from ..conftestaux.gpu_configure import SINGLE_GPU_TESTING, MULTI_GPU_TESTING
 
-from pyMilk.interfacing.shm import IMAGESTREAMIO_HAVE_CUDA
-if not IMAGESTREAMIO_HAVE_CUDA:
+if SINGLE_GPU_TESTING is None:
     pytest.skip("Skipping GPU tests.", allow_module_level=True)
+
+# TODO a pytest primitive HAVE_ONE_GPU, HAVE_TWO_GPU (for p2p)
 
 import cupy as cp
 

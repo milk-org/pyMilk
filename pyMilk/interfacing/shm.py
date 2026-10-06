@@ -594,11 +594,12 @@ class SHM:
                 self.IMAGE.semwait(self.semID)
             else:
                 err = self.IMAGE.semtimedwait(self.semID, timeout)
-                if err != 0:
-                    print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
-                          )
+                if err != 0:  # Timeout
                     if return_none_on_timeout:
                         return None
+                    else:  # Warn, and proceed to return stale data.
+                        print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
+                              )
 
         # FIXME ! image_decode, full_cube_decode don't have the same meaning
         # in case of autoSqueeze collapsing dimensions.
@@ -625,6 +626,10 @@ class SHM:
         - data: the array to upload to SHM
         - check_dt: boolean (default: false) recasts data
         """
+        # SHM is actually a scalar, autosqueezed to 0 dimensions.
+        if self.nDim == 0:
+            data = np.array(data)  # A scalar array with () shape
+
         if autorelink_if_need:
             self._attempt_autorelink_if_needed()
 
@@ -632,11 +637,6 @@ class SHM:
 
         if check_dt:
             data = data.astype(self.nptype)
-
-        # Handling very specific cases
-        # SHM is actually a scalar, autosqueezed to 0 dimensions.
-        if self.nDim == 0:
-            data = np.array(data)  # A scalar array with () shape
 
         if self.nDim == 2:
             data_towrite = img_shapes.image_encode(

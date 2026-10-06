@@ -184,7 +184,10 @@ def fixt_smart_fps_properties():
 
     yield a
 
-    a.destroy()
+    try:
+        a.destroy()
+    except FileNotFoundError:
+        print(f'Could not destroy {a.name} - already gone.')
 
 
 def test_smart_to_dumb(fixt_smart_fps_properties):
@@ -356,3 +359,37 @@ def test_metadata_mot_mappable():
 
     with pytest.raises(fps.SmartFPSInitError):
         f = NewFPS.create('xxxx')
+
+
+def test_fps_isvalid(fixt_smart_fps_properties):
+    f: fps.FPS = fixt_smart_fps_properties
+    assert f.is_valid()
+
+    # drop bytes of garbage in f
+    fps_path = os.environ['MILK_SHM_DIR'] + f"/{f.name}.fps.shm"
+    # TODO rather than False, this is most likely to return a segfault
+    # size_bytes = os.stat(fps_path).st_size
+    #import random
+    #with open(fps_path, 'rb+') as fps_file:
+    #    fps_file.write(random.randbytes(16))
+
+    os.remove(fps_path)
+    assert not f.is_valid()
+
+
+def test_non_leak_maps_with_isvalid(fixt_smart_fps_properties):
+
+    def _count_mmaps_of(fps_filepath: str) -> int:
+        with open(f'/proc/{os.getpid()}/maps') as fh:
+            return sum(1 for line in fh if fps_filepath in line)
+
+    f: fps.FPS = fixt_smart_fps_properties
+
+    fps_path = os.environ['MILK_SHM_DIR'] + f"/{f.name}.fps.shm"
+    baseline = _count_mmaps_of(fps_path)
+    assert baseline > 0
+
+    for _ in range(50):
+        assert f.is_valid()
+
+    assert _count_mmaps_of(fps_path) == baseline
