@@ -82,17 +82,15 @@ errno_t functionparameter_PrintParameter_ValueString(
         case FPTYPE_STRING:
         case FPTYPE_FPSNAME:
         case FPTYPE_PROCESS:
-        case FPTYPE_STRING_NOT_STREAM:
             {
-                int _slen = snprintf(outstring, stringmaxlen, "%s %s %s", fpsentry->keywordfull, 
+                int _slen = snprintf(outstring, stringmaxlen, "%s %s %s", fpsentry->keywordfull,
                                      fpsentry->type == FPTYPE_FILENAME ? "FILENAME" :
                                      fpsentry->type == FPTYPE_FITSFILENAME ? "FITSFILENAME" :
                                      fpsentry->type == FPTYPE_EXECFILENAME ? "EXECFILENAME" :
                                      fpsentry->type == FPTYPE_DIRNAME ? "DIRNAME" :
                                      fpsentry->type == FPTYPE_STREAMNAME ? "STREAMNAME" :
                                      fpsentry->type == FPTYPE_FPSNAME ? "FPSNAME" :
-                                     fpsentry->type == FPTYPE_PROCESS ? "PROCESS" :
-                                     fpsentry->type == FPTYPE_STRING_NOT_STREAM ? "STRING_NOT_STREAM" : "STRING",
+                                     fpsentry->type == FPTYPE_PROCESS ? "PROCESS" : "STRING",
                                      fpsentry->val.string[0]);
                 if (_slen >= 0) cmdOK = 1;
             }
@@ -100,7 +98,7 @@ errno_t functionparameter_PrintParameter_ValueString(
 
         case FPTYPE_ONOFF:
             {
-                int _slen = snprintf(outstring, stringmaxlen, "%s ONOFF %s", fpsentry->keywordfull, 
+                int _slen = snprintf(outstring, stringmaxlen, "%s ONOFF %s", fpsentry->keywordfull,
                                      (fpsentry->val.i32[0]) ? "ON" : "OFF");
                 if (_slen >= 0) cmdOK = 1;
             }
@@ -191,7 +189,7 @@ errno_t functionparameter_GetParamValueString(
                     IMAGE tmpimg;
                     if (ImageStreamIO_openIm(&tmpimg, fpsentry->val.string[0]) == IMAGESTREAMIO_SUCCESS) {
                         const char* type_str = ImageStreamIO_typename(tmpimg.md->datatype);
-                        
+
                         char size_str[64];
                         if (tmpimg.md->naxis == 1) {
                             snprintf(size_str, 64, "%u", tmpimg.md->size[0]);
@@ -201,7 +199,7 @@ errno_t functionparameter_GetParamValueString(
                             snprintf(size_str, 64, "%ux%ux%u", tmpimg.md->size[0], tmpimg.md->size[1], tmpimg.md->size[2]);
                         }
 
-                        int _slen2 = snprintf(outstring + _slen, stringmaxlen - _slen, 
+                        int _slen2 = snprintf(outstring + _slen, stringmaxlen - _slen,
                                               " [%s %s cnt=%lu]", type_str, size_str, tmpimg.md->cnt0);
                         if (_slen2 >= 0) cmdOK = 1;
                         ImageStreamIO_closeIm(&tmpimg);
@@ -221,7 +219,6 @@ errno_t functionparameter_GetParamValueString(
         case FPTYPE_STRING:
         case FPTYPE_FPSNAME:
         case FPTYPE_PROCESS:
-        case FPTYPE_STRING_NOT_STREAM:
             {
                 int _slen = snprintf(outstring, stringmaxlen, "%s", fpsentry->val.string[0]);
                 if (_slen >= 0) cmdOK = 1;

@@ -52,6 +52,7 @@
 
 /* ===== Parameter type codes ===== */
 
+#define FPTYPE_AUTO    0x00000000 // automatic typing
 #define FPTYPE_UNDEF   0x00000001
 #define FPTYPE_INT32   0x00000002
 #define FPTYPE_UINT32  0x00000004
@@ -79,8 +80,6 @@
 
 #define FPTYPE_FPSNAME 0x00020000
 
-#define FPTYPE_STRING_NOT_STREAM 0x00040000
-
 #define FPTYPE_IS_STRING(type) \
     ((type == FPTYPE_STRING) || \
      (type == FPTYPE_FILENAME) || \
@@ -89,8 +88,7 @@
      (type == FPTYPE_DIRNAME) || \
      (type == FPTYPE_STREAMNAME) || \
      (type == FPTYPE_PROCESS) || \
-     (type == FPTYPE_FPSNAME) || \
-     (type == FPTYPE_STRING_NOT_STREAM))
+     (type == FPTYPE_FPSNAME))
 
 #define STRINGMAXLEN_FPSTYPE  20
 

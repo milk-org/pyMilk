@@ -16,37 +16,13 @@ which must be compiled and accessible in the PYTHONPATH
 isio_shmlib.py SHM class     (python) <- You are here
         ^
         |
-ImageStreamIOWrap.cpp     (pyBind)
+ImageStreamIOWrap.cpp     (nanobind)
         ^
         |
 ImagestreamIO.c           (C)
         ^
         |
 Shared memory
-
-
-For previous xaosim.shmlib users:
-
-    Class interface and documentation is plagiarized
-    on xaosim's shmlib and scexao_shmlib.
-    With a few advantages provided by using ImageStreamIO directly:
-    - Evolves naturally with ImageStreamIO updates
-    - Natural integration with MILK's streamCTRL
-    - Semaphores, metadata and keywords handled by the C.
-
-    Note: Class methods which only affected internal flags in shmlib
-          were removed if unnecessary
-
-          Methods deleted:
-              create
-              increment_counter
-
-
-          New methods are added a the end of the file, that rely on
-          the ImageStreamIOWrap interface and may very well not be
-          back-portable to xaosim.
-
-          Methods added:
 
 
 Credit for the ideas, templates, docstrings, and xaosim.shmlib:
@@ -58,12 +34,11 @@ Credit for ImageStreamIOWrap pybind interface: A. Sevin
 """
 from __future__ import annotations
 
-from . import glib_loader_fix
-
-from pyMilk.ImageStreamIOWrap import Image, Image_kw, Image_md
-
 import typing as typ
+import numpy as np
+
 if typ.TYPE_CHECKING:
+    IMAGESTREAMIO_HAVE_CUDA: int
     KWType = str | int | float
     KWDict = dict[str, KWType]
     KWCommentDict = dict[str, tuple[KWType, str]]
@@ -75,9 +50,16 @@ if typ.TYPE_CHECKING:
     from types import TracebackType
     ExcTpl = typ.TypeVar('ExcTpl', bound=BaseException)
 
+    import numpy.typing as npt
+    import cupy as cp
+
+    xp_ndarray = typ.TypeVar('xp_ndarray', np.ndarray, cp.ndarray)
+
+from . import glib_loader_fix
+from pyMilk.ImageStreamIOWrap import Image, Image_kw, Image_md, IMAGESTREAMIO_HAVE_CUDA
+# FIXME all np calls... in case the data is a cp array ! Review img_shapes as well.
+
 import datetime
-import numpy as np
-import numpy.typing as npt
 
 import time
 
@@ -107,7 +89,7 @@ class SHM:
     def __init__(
             self,
             fname: str,
-            data: None | np.ndarray |
+            data: None | xp_ndarray |
             tuple[tuple[int, ...], npt.DTypeLike] = None,
             nbkw: int = 50,
             shared: bool | typ.Literal[0, 1] = True,
@@ -169,46 +151,64 @@ class SHM:
         self.FILEPATH = MILK_SHM_DIR() + '/' + self.FNAME + '.im.shm'
 
         self.semID: int | None = None
-        self.location = location
-        self.shared = shared
+
         self.symcode = (
                 symcode  # Handle image symetries; 0-7, see pyMilk.util.img_shapes
         )
         self.triDimState = triDim
 
-        if data is None:  # Image read
-            if not self._open_from_isio():
-                raise FileNotFoundError(
-                        f"Requested SHM {fname} does not exist")
-            # _checkExists already performed the self.IMAGE.open()
+        self.location: int  # assigned in _finalize_init
+        self.shared: bool
 
-            self._checkGrabSemaphore()
-            data_arr: np.ndarray = self.IMAGE.copy()  # Data is C-side shaped
+        if data is None:
+            self._finalize_init_openmode(autoSqueeze)
+        else:
+            self._finalize_init_creationmode(data, location, shared, nbkw)
 
-            self._init_internals_read(data_arr, autoSqueeze)
+    def _finalize_init_openmode(self, autoSqueeze: bool):
 
-        else:  # Image create
-            if not isinstance(data, np.ndarray):
-                # data is (Shape, type) tuple
-                data_arr = np.zeros(data[0],
-                                    dtype=data[1])  # Data is Py-side shaped
-            else:
-                data_arr = data
+        if not self._open_from_isio():
+            raise FileNotFoundError(
+                    f"Requested SHM {self.FNAME} does not exist")
+        # _checkExists already performed the self.IMAGE.open()
 
-            data_c = self._init_internals_creation(data_arr)
+        self._checkGrabSemaphore()
+        data_arr: np.ndarray = self.IMAGE.copy()  # Data is C-side shaped
 
-            if not self._open_from_isio():
-                print(f"{self.FNAME}.im.shm will be created")
-            else:
-                print(f"{self.FNAME}.im.shm will be overwritten")
-                # _checkExist opened the image, we can destroy.
-                # But we don't need to destroy
-                # And that creates a brief lapse where the file, old nor new, doesn't exits
-                # So better just close, not destroy, then overwrite.
-                self.IMAGE.close()
+        self._init_internals_read(data_arr, autoSqueeze)
 
-            self.IMAGE.create(self.FNAME, data_c, location=location,
-                              shared=shared, NBkw=nbkw)
+        self.shared = True  # can't be other with OpenIm...
+        self.location = self.IMAGE.md.location
+
+    def _finalize_init_creationmode(self, data: xp_ndarray |
+                                    tuple[tuple[int, ...], npt.DTypeLike],
+                                    location: int, shared: bool |
+                                    typ.Literal[0, 1], nbkw: int):
+        # Check if numpy or cupy array but without importing cupy ;) Adding mro() to work on subclasses of ndarray.
+        if 'py.ndarray' in repr(type(data).mro()):
+            data_arr = data
+        else:
+            # data is (Shape, type) tuple
+            # making np array (shape as python-side)
+            data_arr = np.zeros(data[0], dtype=data[1])
+
+        data_c = self._init_internals_creation(data_arr)  # type: ignore
+
+        if not self._open_from_isio():
+            print(f"{self.FNAME}.im.shm will be created")
+        else:
+            print(f"{self.FNAME}.im.shm will be overwritten")
+            # _checkExist opened the image, we can destroy.
+            # But we don't need to destroy
+            # And that creates a brief lapse where the file, old nor new, doesn't exits
+            # So better just close, not destroy, then overwrite.
+            self.IMAGE.close()
+
+        self.location = location
+        self.shared = bool(shared)
+
+        self.IMAGE.create(self.FNAME, data_c, location=location, shared=shared,
+                          NBkw=nbkw)
 
     def _init_internals_read(self, data: np.ndarray,
                              autoSqueeze: bool) -> None:
@@ -237,6 +237,7 @@ class SHM:
 
         # Quick ref
         self.nDim = len(self.shape)
+        self.nDim_c = len(self.shape_c)
 
         # 3D ordering
         if self.nDim == 2:
@@ -286,9 +287,12 @@ class SHM:
                 self.shape
         """
 
+        data = _ensure_native_byteorder(data)
+
         self.nptype = data.dtype
         self.shape = data.shape
         self.nDim = len(self.shape)
+        self.nDim_c = self.nDim  # No autosqueeze in creation mode
 
         # Autosqueeze
         if 1 in self.shape:
@@ -550,7 +554,7 @@ class SHM:
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: typ.Literal[False] = False
-                 ) -> np.ndarray:
+                 ) -> xp_ndarray:
         ...
 
     @typ.overload
@@ -558,13 +562,13 @@ class SHM:
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
                  return_none_on_timeout: typ.Literal[True] = True
-                 ) -> np.ndarray | None:
+                 ) -> xp_ndarray | None:
         ...
 
     def get_data(self, check: bool = False, timeout: float | None = 5.0,
                  copy: bool = True, checkSemAndFlush: bool = True,
                  autorelink_if_need: bool = True,
-                 return_none_on_timeout: bool = False) -> np.ndarray | None:
+                 return_none_on_timeout: bool = False) -> xp_ndarray | None:
         """
         Reads and returns the data part of the SHM file
         Parameters:
@@ -590,42 +594,30 @@ class SHM:
                 self.IMAGE.semwait(self.semID)
             else:
                 err = self.IMAGE.semtimedwait(self.semID, timeout)
-                if err != 0:
-                    print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
-                          )
+                if err != 0:  # Timeout
                     if return_none_on_timeout:
                         return None
+                    else:  # Warn, and proceed to return stale data.
+                        print(f"Warning SHM {self.FNAME} - isio_shmlib.SHM.get_data has timed out and returned old data."
+                              )
 
-        if self.location >= 0:
-            if copy:
-                arr_sliced = self.IMAGE.copy()[self.readSlice]
-                if self.nDim == 2:
-                    return img_shapes.image_decode(arr_sliced, self.symcode)
-                elif self.nDim == 3:
-                    return img_shapes.full_cube_decode(
-                            arr_sliced,
-                            self.symcode,
-                            self.triDimState,
-                    )
-                else:
-                    return self.IMAGE.copy()[self.readSlice]
-            else:
-                raise AssertionError("copy=False not allowed on GPU.")
+        # FIXME ! image_decode, full_cube_decode don't have the same meaning
+        # in case of autoSqueeze collapsing dimensions.
+        # Should they apply before or after reducing dimensions??
+        arr_sliced = (self.IMAGE.copy()
+                      if copy else self.IMAGE.view())[self.readSlice]
+        if self.nDim == 2:
+            return img_shapes.image_decode(arr_sliced, self.symcode)
+        elif self.nDim == 3:
+            return img_shapes.full_cube_decode(
+                    arr_sliced,
+                    self.symcode,
+                    self.triDimState,
+            )
         else:
-            # This syntax is only allowed on CPU - segfaults if loc > 0
-            arr_sliced = self.IMAGE.copy() if copy else self.IMAGE.view()
-            if self.nDim == 2:
-                return img_shapes.image_decode(arr_sliced, self.symcode)
-            elif self.nDim == 3:
-                return img_shapes.full_cube_decode(
-                        arr_sliced,
-                        self.symcode,
-                        self.triDimState,
-                )
-            else:
-                return arr_sliced
+            return arr_sliced
 
-    def set_data(self, data: np.ndarray, check_dt: bool = False,
+    def set_data(self, data: xp_ndarray, check_dt: bool = False,
                  autorelink_if_need: bool = False) -> None:
         """
         Upload new data to the SHM file.
@@ -634,16 +626,17 @@ class SHM:
         - data: the array to upload to SHM
         - check_dt: boolean (default: false) recasts data
         """
-        if autorelink_if_need:
-            self._attempt_autorelink_if_needed()
-
-        if check_dt:
-            data = data.astype(self.nptype)
-
-        # Handling very specific cases
         # SHM is actually a scalar, autosqueezed to 0 dimensions.
         if self.nDim == 0:
             data = np.array(data)  # A scalar array with () shape
+
+        if autorelink_if_need:
+            self._attempt_autorelink_if_needed()
+
+        data = _ensure_native_byteorder(data)
+
+        if check_dt:
+            data = data.astype(self.nptype)
 
         if self.nDim == 2:
             data_towrite = img_shapes.image_encode(
@@ -679,8 +672,11 @@ class SHM:
         - fitsname: a filename (overwrite=True)
         """
         from pyMilk.interfacing import fits_lib
-        fits_lib.multi_write(fitsname, self.get_data(**kwargs),
-                             symcode=self.symcode, tri_dim=self.triDimState)
+        fits_lib.multi_write(
+                fitsname,
+                self.get_data(**kwargs),  # type: ignore
+                symcode=self.symcode,
+                tri_dim=self.triDimState)
         return 0
 
     #############################################################
@@ -857,6 +853,12 @@ class SHM:
             print(f"{p3} < 1, {p4} > 1 pre/post diff.")
 
         return output
+
+
+def _ensure_native_byteorder(data: xp_ndarray) -> xp_ndarray:
+    if not data.dtype.isnative:
+        data = data.astype(data.dtype.newbyteorder('='), copy=True)
+    return data
 
 
 def check_SHM_name(fname: str) -> str:

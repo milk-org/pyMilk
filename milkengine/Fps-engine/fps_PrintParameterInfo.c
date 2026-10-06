@@ -784,11 +784,6 @@ functionparameter_PrintParameterInfo(
         printf("  %10s", fpsentry->parray[pindex].val.string[0]);
     }
 
-    if(fpsentry->parray[pindex].type == FPTYPE_STRING_NOT_STREAM)
-    {
-        printf("  %10s", fpsentry->parray[pindex].val.string[0]);
-    }
-
     printf("\n");
     printf("\n");
 

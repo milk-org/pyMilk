@@ -109,7 +109,6 @@ int function_parameter_print_info(
                 case FPTYPE_ONOFF: type_str = "ONOFF"; break;
                 case FPTYPE_PROCESS: type_str = "PROCESS"; break;
                 case FPTYPE_FPSNAME: type_str = "FPSNAME"; break;
-                case FPTYPE_STRING_NOT_STREAM: type_str = "STRING_NOT_STREAM"; break;
             }
 
             const char *color_start = COLORRESET;

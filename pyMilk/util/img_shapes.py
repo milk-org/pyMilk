@@ -40,13 +40,24 @@ Second axis is column and left-to-right, hence "+x"
 This is good for not ovethinking indexing in your code.
 """
 from __future__ import annotations
+import typing as typ
+if typ.TYPE_CHECKING:
+    import cupy as cp
+
+    import numpy.typing as npt
+    import cupy.typing as cpt
+
+    cpNDArray: typ.TypeAlias = cpt.NDArray  # type: ignore # that hint is missing in cupy 14.0.1
+    xp_ndarray = typ.TypeVar('xp_ndarray', npt.NDArray, cpNDArray)
 
 import numpy as np
-import numpy.typing as npt
-import typing as typ
+try:
+    from cupy import get_array_module
+except:
+    get_array_module = lambda x: np
 
 
-def image_encode(im: npt.NDArray, s: int) -> npt.NDArray:
+def image_encode(im: xp_ndarray, s: int) -> xp_ndarray:
     # Cases 4 to 7: x and y must be swapped
     if s < 0 or s > 7:
         raise ValueError("symcode s must be 0-7")
@@ -54,22 +65,22 @@ def image_encode(im: npt.NDArray, s: int) -> npt.NDArray:
     if s == 0:
         return im
     elif s == 1:
-        return im[::-1, :]
+        return im[::-1, :]  # type: ignore
     elif s == 2:
-        return im[:, ::-1]
+        return im[:, ::-1]  # type: ignore
     elif s == 3:
-        return im[::-1, ::-1]
+        return im[::-1, ::-1]  # type: ignore
     else:
         return image_encode(im.T, s - 4)
 
 
-def image_decode(x: npt.NDArray, s: int) -> npt.NDArray:
+def image_decode(x: xp_ndarray, s: int) -> xp_ndarray:
     if s < 0 or s > 7:
         raise ValueError("symcode s must be 0-7")
     return image_encode(x, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
-def cube_front_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
+def cube_front_image_encode(cube: xp_ndarray, s: int) -> xp_ndarray:
     """
     Encode image cube - dim 0 is the cube axis
     """
@@ -79,22 +90,23 @@ def cube_front_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
     if s == 0:
         return cube
     elif s == 1:
-        return cube[:, ::-1, :]
+        return cube[:, ::-1, :]  # type: ignore
     elif s == 2:
-        return cube[:, :, ::-1]
+        return cube[:, :, ::-1]  # type: ignore
     elif s == 3:
-        return cube[:, ::-1, ::-1]
+        return cube[:, ::-1, ::-1]  # type: ignore
     else:
-        return cube_front_image_encode(np.swapaxes(cube, 1, 2), s - 4)
+        xp = get_array_module(cube)
+        return cube_front_image_encode(xp.swapaxes(cube, 1, 2), s - 4)
 
 
-def cube_front_image_decode(cube: npt.NDArray, s: int) -> npt.NDArray:
+def cube_front_image_decode(cube: xp_ndarray, s: int) -> xp_ndarray:
     if s < 0 or s > 7:
         raise ValueError("symcode s must be 0-7")
     return cube_front_image_encode(cube, [0, 1, 2, 3, 4, 6, 5, 7][s])
 
 
-def cube_back_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
+def cube_back_image_encode(cube: xp_ndarray, s: int) -> xp_ndarray:
     """
     Encode image cube - dim 2 is the cube axis
     """
@@ -104,16 +116,17 @@ def cube_back_image_encode(cube: npt.NDArray, s: int) -> npt.NDArray:
     if s == 0:
         return cube
     elif s == 1:
-        return cube[::-1, :, :]
+        return cube[::-1, :, :]  # type: ignore
     elif s == 2:
-        return cube[:, ::-1, :]
+        return cube[:, ::-1, :]  # type: ignore
     elif s == 3:
-        return cube[::-1, ::-1, :]
+        return cube[::-1, ::-1, :]  # type: ignore
     else:
-        return cube_back_image_encode(np.swapaxes(cube, 0, 1), s - 4)
+        xp = get_array_module(cube)
+        return cube_back_image_encode(xp.swapaxes(cube, 0, 1), s - 4)
 
 
-def cube_back_image_decode(cube: npt.NDArray, s: int) -> npt.NDArray:
+def cube_back_image_decode(cube: xp_ndarray, s: int) -> xp_ndarray:
     if s < 0 or s > 7:
         raise ValueError("symcode s must be 0-7")
     return cube_back_image_encode(cube, [0, 1, 2, 3, 4, 6, 5, 7][s])
@@ -170,15 +183,17 @@ class Which3DState:
     FRONT2LAST = 3
 
 
-def cube_roll_forw(cube: np.ndarray) -> np.ndarray:
-    return np.moveaxis(cube, 2, 0)
+def cube_roll_forw(cube: xp_ndarray) -> xp_ndarray:
+    xp = get_array_module(cube)
+    return xp.moveaxis(cube, 2, 0)
 
 
-def cube_roll_back(cube: np.ndarray) -> np.ndarray:
-    return np.moveaxis(cube, 0, 2)
+def cube_roll_back(cube: xp_ndarray) -> xp_ndarray:
+    xp = get_array_module(cube)
+    return xp.moveaxis(cube, 0, 2)
 
 
-def full_cube_encode(cube: np.ndarray, s: int, tri_dim: int) -> np.ndarray:
+def full_cube_encode(cube: xp_ndarray, s: int, tri_dim: int) -> xp_ndarray:
     if tri_dim in [Which3DState.FRONT2FRONT, Which3DState.FRONT2LAST]:
         cube = cube_front_image_encode(cube, s)
     else:
@@ -192,7 +207,7 @@ def full_cube_encode(cube: np.ndarray, s: int, tri_dim: int) -> np.ndarray:
     return cube
 
 
-def full_cube_decode(cube: np.ndarray, s: int, tri_dim: int) -> np.ndarray:
+def full_cube_decode(cube: xp_ndarray, s: int, tri_dim: int) -> xp_ndarray:
     if tri_dim == Which3DState.LAST2FRONT:
         cube = cube_roll_back(cube)
     elif tri_dim == Which3DState.FRONT2LAST:

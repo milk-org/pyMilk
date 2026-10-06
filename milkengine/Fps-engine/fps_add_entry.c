@@ -281,15 +281,6 @@ errno_t function_parameter_add_entry(FUNCTION_PARAMETER_STRUCT *fps,
                                FUNCTION_PARAMETER_STRMAXLEN,
                                "NULLPROC");
                 break;
-
-            case FPTYPE_STRING_NOT_STREAM:
-                SNPRINTF_CHECK(funcparamarray[pindex].val.string[0],
-                               FUNCTION_PARAMETER_STRMAXLEN,
-                               "NULLSTR");
-                SNPRINTF_CHECK(funcparamarray[pindex].val.string[1],
-                               FUNCTION_PARAMETER_STRMAXLEN,
-                               "NULLSTR");
-                break;
         }
 
         if(valueptr != NULL)  // allocate value requested by function call
@@ -419,7 +410,6 @@ errno_t function_parameter_add_entry(FUNCTION_PARAMETER_STRUCT *fps,
 
                 case FPTYPE_FPSNAME:
                 case FPTYPE_PROCESS:
-                case FPTYPE_STRING_NOT_STREAM:
                     strncpy(funcparamarray[pindex].val.string[0],
                             (char *) valueptr,
                             FUNCTION_PARAMETER_STRMAXLEN - 1);
