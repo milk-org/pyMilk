@@ -626,6 +626,11 @@ class SHM:
         - data: the array to upload to SHM
         - check_dt: boolean (default: false) recasts data
         """
+        # Handling very specific cases
+        # SHM is actually a scalar, autosqueezed to 0 dimensions.
+        if self.nDim == 0:
+            data = np.array(data)  # A scalar array with () shape
+
         if autorelink_if_need:
             self._attempt_autorelink_if_needed()
 
@@ -633,11 +638,6 @@ class SHM:
 
         if check_dt:
             data = data.astype(self.nptype)
-
-        # Handling very specific cases
-        # SHM is actually a scalar, autosqueezed to 0 dimensions.
-        if self.nDim == 0:
-            data = np.array(data)  # A scalar array with () shape
 
         if self.nDim == 2:
             data_towrite = img_shapes.image_encode(
