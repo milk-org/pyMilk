@@ -61,6 +61,7 @@ enum FPS_type : uint32_t
     ONOFF        = FPTYPE_ONOFF,
     PROCESS      = FPTYPE_PROCESS,
     FPSNAME      = FPTYPE_FPSNAME,
+    STRING_NOT_STREAM = FPTYPE_STRING_NOT_STREAM,
 };
 
 enum FPS_flags : uint64_t

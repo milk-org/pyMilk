@@ -43,6 +43,19 @@ bool pid_is_running(pid_t pid)
 } // namespace
 
 
+struct timespec double_to_timespec(double value) {
+    struct timespec tspec;
+    tspec.tv_sec = static_cast<time_t>(value);
+    tspec.tv_nsec = static_cast<long>((value - tspec.tv_sec) * 1e9);
+    return tspec;
+}
+
+double timespec_to_double(struct timespec tspec) {
+    return static_cast<double>(tspec.tv_sec) + static_cast<double>(tspec.tv_nsec) * 1e-9;
+}
+
+
+
 int fps_value_to_key(pyFps             &cls,
                      const std::string &key,
                      const FPS_type     fps_type,
@@ -57,10 +70,11 @@ int fps_value_to_key(pyFps             &cls,
             return functionparameter_SetParamValue_ONOFF(cls, key.c_str(),
                     nb::cast<bool>(value));
         case FPS_type::INT32:
-        case FPS_type::UINT32:
+        case FPS_type::PID:
         case FPS_type::INT64:
-            return functionparameter_SetParamValue_INT64(cls, key.c_str(),
-                    nb::cast<int64_t>(value));
+        return functionparameter_SetParamValue_INT64(cls, key.c_str(),
+        nb::cast<int64_t>(value));
+        case FPS_type::UINT32:
         case FPS_type::UINT64:
             return functionparameter_SetParamValue_UINT64(cls, key.c_str(),
                     nb::cast<uint64_t>(value));
@@ -71,18 +85,21 @@ int fps_value_to_key(pyFps             &cls,
             return functionparameter_SetParamValue_FLOAT64(cls, key.c_str(),
                     nb::cast<double>(value));
         case FPS_type::STRING:
+        case FPS_type::STRING_NOT_STREAM:
         case FPS_type::STREAMNAME:
         case FPS_type::DIRNAME:
         case FPS_type::EXECFILENAME:
         case FPS_type::FILENAME:
         case FPS_type::FITSFILENAME:
+        case FPS_type::PROCESS:
+        case FPS_type::FPSNAME:
             return functionparameter_SetParamValue_STRING(
                        cls,
                        key.c_str(),
                        nb::cast<std::string>(value).c_str());
         case FPS_type::TIMESPEC:
             return functionparameter_SetParamValue_TIMESPEC(cls, key.c_str(),
-                    nb::cast<double>(value));
+                    double_to_timespec(nb::cast<double>(value)));
         default:
             return EXIT_FAILURE;
     }
@@ -95,11 +112,12 @@ fps_value_from_key(pyFps &cls, const std::string &key, const FPS_type fps_type)
     {
         case FPS_type::ONOFF:
             return nb::bool_(functionparameter_GetParamValue_ONOFF(cls, key.c_str()));
-        case FPS_type::INT32:
-        case FPS_type::UINT32:
+        case FPS_type::INT32: // TODO this is actally probably wrong ? since the underlying values stored are arrays, so reading a uint32 as a uint64 will concatenate them
+        case FPS_type::PID:
         case FPS_type::INT64:
-            return nb::int_(
-                       functionparameter_GetParamValue_INT64(cls, key.c_str()));
+        return nb::int_(
+            functionparameter_GetParamValue_INT64(cls, key.c_str()));
+        case FPS_type::UINT32:
         case FPS_type::UINT64:
             return nb::int_(
                        functionparameter_GetParamValue_UINT64(cls, key.c_str()));
@@ -110,14 +128,17 @@ fps_value_from_key(pyFps &cls, const std::string &key, const FPS_type fps_type)
             return nb::float_(
                        functionparameter_GetParamValue_FLOAT64(cls, key.c_str()));
         case FPS_type::STRING:
+        case FPS_type::STRING_NOT_STREAM:
         case FPS_type::STREAMNAME:
         case FPS_type::DIRNAME:
         case FPS_type::EXECFILENAME:
         case FPS_type::FILENAME:
         case FPS_type::FITSFILENAME:
+        case FPS_type::PROCESS:
+        case FPS_type::FPSNAME:
             return nb::str(functionparameter_GetParamPtr_STRING(cls, key.c_str()));
         case FPS_type::TIMESPEC:
-            return nb::float_(functionparameter_GetParamValue_TIMESPEC(cls, key.c_str()));
+            return nb::float_(timespec_to_double(functionparameter_GetParamValue_TIMESPEC(cls, key.c_str())));
         default:
             return nb::none();
     }
@@ -170,6 +191,7 @@ NB_MODULE(FpsWrap, m)
     .value("ONOFF", FPS_type::ONOFF)
     .value("PROCESS", FPS_type::PROCESS)
     .value("FPSNAME", FPS_type::FPSNAME)
+    .value("STRING_NOT_STREAM", FPS_type::STRING_NOT_STREAM)
     .export_values();
 
     nb::enum_<FPS_flags>(m, "FPS_flags")
