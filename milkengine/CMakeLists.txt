@@ -40,6 +40,3 @@ add_subdirectory(ProcessInfo-engine)
 add_subdirectory(Fps-engine)
 add_subdirectory(pinfo_python_module)
 add_subdirectory(fps_python_module)
-
-add_subdirectory(Transport-engine)
-add_subdirectory(transport_python_module)
