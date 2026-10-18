@@ -415,7 +415,8 @@ Return:
             "RUNrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->runpid;
-                if (pid_is_running(pid) && cls->md->status & FUNCTION_PARAMETER_STRUCT_STATUS_RUNLOOP) // PID is live + completed loop setup.
+                if (pid_is_running(pid) && cls->md->status & FUNCTION_PARAMETER_STRUCT_STATUS_RUN) // PID is live + run pid started
+                //  FUNCTION_PARAMETER_STRUCT_STATUS_RUNLOOP would be better but not impl on dev.
                 {
                     return 1;
                 }
