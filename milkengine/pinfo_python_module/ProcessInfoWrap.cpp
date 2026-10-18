@@ -52,7 +52,7 @@ Parameters:
 
 Parameters:
     pname : name of the Process Info object (human-readable)
-    CTRLval : control value to be externally written.
+    CTRLval : control value to be externally written on startup.
              - 0: run                     (default)
              - 1: pause
              - 2: increment single step (will go back to 1)
@@ -73,18 +73,14 @@ Return:
     ret : error code
 )pbdoc",
              nb::arg("name"))
+        .def("clean_exit",
+            &pyProcessInfo::clean_exit,
+            R"pbdoc(Send CTRLval signal to tell process to exit gracefully.
 
-        .def("close",
-             nb::overload_cast<const char *>(&pyProcessInfo::close),
-             R"pbdoc(Close an existing Process Info object in shared memory
-
-Parameters:
-    pname : name of the Process Info object (human-readable)
 Return:
-    ret : error code
-)pbdoc",
-             nb::arg("name")="")
-
+    ret: error code
+)pbdoc"
+        )
         .def("sigexit",
              &pyProcessInfo::sigexit,
              R"pbdoc(Send a signal to a Process Info object
