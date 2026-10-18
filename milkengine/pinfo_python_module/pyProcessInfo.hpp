@@ -40,14 +40,17 @@ class pyProcessInfo
     * @brief Destroy the Process Info object
     *
     */
-    ~pyProcessInfo()
+    int clean_exit()
     {
         if(m_pinfo != nullptr)
         {
-            processinfo_cleanExit(m_pinfo);
+            int ret = processinfo_cleanExit(m_pinfo);
             m_pinfo = nullptr;
+            return ret;
         }
+        return EXIT_FAILURE;
     }
+
 
     PROCESSINFO *operator->()
     {
@@ -95,19 +98,6 @@ class pyProcessInfo
     int link(const char *pname)
     {
         m_pinfo = processinfo_shm_link(pname, &m_fd);
-        return EXIT_SUCCESS;
-    }
-
-    /**
-    * @brief Close an existing Process Info object in shared memory
-    *
-    * @param pname : name of the Process Info object (human-readable)
-    * @return int : error code
-    */
-    int close(const char *pname)
-    {
-        processinfo_shm_close(m_pinfo, m_fd);
-        m_pinfo = nullptr;
         return EXIT_SUCCESS;
     }
 

@@ -125,7 +125,7 @@ int processinfo_ProcessSignals(PROCESSINFO *processinfo)
 int processinfo_cleanExit(PROCESSINFO *processinfo)
 {
 
-    if(processinfo->loopstat != 4)
+    if(processinfo->loopstat != PROCESSINFO_LOOPSTAT_ERROR)
     {
         struct timespec tstop;
         struct tm      *tstoptm;
@@ -162,7 +162,7 @@ int processinfo_cleanExit(PROCESSINFO *processinfo)
                     STRINGMAXLEN_PROCESSINFO_STATUSMSG - 1);
         }
 
-        processinfo->loopstat = 3; // clean exit
+        processinfo->loopstat = PROCESSINFO_LOOPSTAT_STOP; // clean exit
     }
 
     // Remove processinfo shm file on clean exit
