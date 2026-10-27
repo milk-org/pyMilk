@@ -15,9 +15,25 @@
 namespace nb = nanobind;
 using namespace nanobind::literals;
 
+using TimespecArray = nb::ndarray<nb::numpy, double, nb::shape<PROCESSINFO_NBtimer>>;
+
+// Copy of a timespec buffer in shared memory, converted to seconds (double).
+static TimespecArray timespec_array_to_double(const timespec *buf)
+{
+    double *data = new double[PROCESSINFO_NBtimer];
+    for(size_t i = 0; i < PROCESSINFO_NBtimer; ++i)
+    {
+        data[i] = buf[i].tv_sec + 1e-9 * buf[i].tv_nsec;
+    }
+    nb::capsule owner(data, [](void *p) noexcept { delete[] (double *)p; });
+    return TimespecArray(data, {(size_t)PROCESSINFO_NBtimer}, owner);
+}
+
 NB_MODULE(ProcessInfoWrap, m)
 {
     m.doc() = "ProcessInfoWrap library module";
+
+    m.attr("PROCESSINFO_NBtimer") = PROCESSINFO_NBtimer;
 
     if (!nb::type<timespec>().is_valid())
     { // Possible multiple registration warning
@@ -221,6 +237,31 @@ Return:
             [](pyProcessInfo &p, int statuscode) {
                 p->statuscode = statuscode;
             })
+        .def_prop_rw(
+            "timerindex",
+            [](pyProcessInfo &p) {
+                return p->timerindex;
+            },
+            [](pyProcessInfo &p, int timerindex) {
+                p->timerindex = timerindex;
+            },
+            "Last written index in the timing circular buffers")
+        .def_prop_ro(
+            "texecstart",
+            [](pyProcessInfo &p) {
+                return timespec_array_to_double(p->texecstart);
+            },
+            "Copy of the task start times circular buffer, as a float64 "
+            "array of seconds, shape (PROCESSINFO_NBtimer,)",
+            nb::rv_policy::move)
+        .def_prop_ro(
+            "texecend",
+            [](pyProcessInfo &p) {
+                return timespec_array_to_double(p->texecend);
+            },
+            "Copy of the task end times circular buffer, as a float64 "
+            "array of seconds, shape (PROCESSINFO_NBtimer,)",
+            nb::rv_policy::move)
         // .def_readwrite("logFile", &pyProcessInfo::m_pinfo::logFile)
         .def_prop_rw(
             "description",

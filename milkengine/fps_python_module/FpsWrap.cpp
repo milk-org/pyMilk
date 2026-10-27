@@ -444,10 +444,6 @@ Return:
 
         ;
     nb::class_<FUNCTION_PARAMETER_STRUCT_MD>(m, "FPS_md")
-        // .def(nb::init([]() {
-        //     return std::unique_ptr<FUNCTION_PARAMETER_STRUCT_MD>(new
-        //     FUNCTION_PARAMETER_STRUCT_MD());
-        // }))
         .def_ro("name", &FUNCTION_PARAMETER_STRUCT_MD::name)
         .def_ro("description", &FUNCTION_PARAMETER_STRUCT_MD::description)
         .def_ro("kwarray", &FUNCTION_PARAMETER_STRUCT_MD::keywordarray)

@@ -628,7 +628,8 @@ class SHM:
         """
         # SHM is actually a scalar, autosqueezed to 0 dimensions.
         if self.nDim == 0:
-            data = np.array(data)  # A scalar array with () shape
+            # A scalar array with () shape
+            data = np.array(data)  # type: ignore
 
         if autorelink_if_need:
             self._attempt_autorelink_if_needed()
@@ -636,7 +637,7 @@ class SHM:
         data = _ensure_native_byteorder(data)
 
         if check_dt:
-            data = data.astype(self.nptype)
+            data = data.astype(self.nptype)  # type: ignore
 
         if self.nDim == 2:
             data_towrite = img_shapes.image_encode(
@@ -857,7 +858,8 @@ class SHM:
 
 def _ensure_native_byteorder(data: xp_ndarray) -> xp_ndarray:
     if not data.dtype.isnative:
-        data = data.astype(data.dtype.newbyteorder('='), copy=True)
+        data = data.astype(data.dtype.newbyteorder('='),
+                           copy=True)  # type: ignore
     return data
 
 
