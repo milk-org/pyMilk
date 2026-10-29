@@ -391,7 +391,7 @@ Return:
             "CONFrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->confpid;
-                if (pid_is_running(pid))
+                if (pid_is_running(pid) && cls->md->status & FUNCTION_PARAMETER_STRUCT_STATUS_CONF)
                 {
                     return 1;
                 }

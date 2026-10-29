@@ -11,7 +11,7 @@ is what static analyzers will parse.
 TODO: would be much nice if we had a binding of the enums for CTRLval, etc.
 '''
 
-import os
+import os, time
 from enum import IntEnum
 
 from .shm import MILK_SHM_DIR
@@ -47,6 +47,8 @@ class ProcessInfo:
         fps_slug = '.' + fps_name if fps_name else ''
         file_name = MILK_SHM_DIR() + f'/proc{fps_slug}.{pid:06d}.shm'
 
+        self.name = f'{fps_slug}.{pid:06d}'
+
         if not os.path.isfile(file_name):
             raise FileNotFoundError(
                     f'ProcessInfo file {file_name} is missing.')
@@ -73,3 +75,16 @@ class ProcessInfo:
         while self._pinfo.timerindex != ProcessInfoWrap.PROCESSINFO_NBtimer - 1:
             ...
         return self._pinfo.texecstart, self._pinfo.texecend
+
+    @property
+    def loopcnt(self):
+        return self._pinfo.loopcnt
+
+    def busywait_until_loopcnt(self, value: int,
+                               timeout: float | None = 1.0) -> None:
+        t = time.monotonic()
+        while self._pinfo.loopcnt <= value:
+            if timeout and t + timeout < time.monotonic():
+                raise TimeoutError(
+                        f'Timeout waiting for procinfo {self.name} count to reach {value}'
+                )

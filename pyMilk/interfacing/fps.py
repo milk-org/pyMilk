@@ -25,6 +25,7 @@ import typing as typ
 import os
 import time
 import glob
+import weakref
 
 _CORES = os.sched_getaffinity(0)
 from . import glib_loader_fix
@@ -122,6 +123,9 @@ class FPS:
 
     def __init__(self, name: str) -> None:
         self.name = name
+        fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{name}.fps.shm'
+        if not os.path.isfile(fps_filepath):
+            raise FPSDoesntExistError(fps_filepath)
         try:
             self.fps = CPTFPS(name)
         except RuntimeError as exc:
@@ -514,7 +518,9 @@ class ProcessInfoFps:
     triggertimeout: float
 
     def __init__(self, parent_fps: FPS) -> None:
-        self._fps = parent_fps
+        self._fps = weakref.proxy(
+                parent_fps
+        )  # no cycle: FPS is freed (and disconnected) by refcount
 
         # create the properties
         for key in self.__annotations__:
