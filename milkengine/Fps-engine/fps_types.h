@@ -373,6 +373,7 @@ typedef struct
 
 typedef struct
 {
+    char version[32]; /// structure version, must equal MILK_FUNCTION_PARAMETER_STRUCT_VERSION (synced from milk libfps)
     char name[STRINGMAXLEN_FPS_NAME];
     char description[FPS_DESCR_STRMAXLEN];
     char helptext[FPS_HELPTEXT_STRMAXLEN];

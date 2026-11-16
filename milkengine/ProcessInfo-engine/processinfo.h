@@ -59,6 +59,7 @@ typedef long imageID;
 //
 typedef struct
 {
+    char  version[32]; // structure version, validated by processinfo_shm_link() (synced from milk libprocessinfo)
     pid_t PIDarray[PROCESSINFOLISTSIZE];
     int   active[PROCESSINFOLISTSIZE];
     char  pnamearray[PROCESSINFOLISTSIZE]
@@ -85,6 +86,8 @@ extern pid_t CLIPID;
  */
 typedef struct PROCESSINFO
 {
+    char version[32]; /// structure version, must equal MILK_PROCESSINFO_VERSION (synced from milk libprocessinfo)
+
     char name[STRINGMAXLEN_PROCESSINFO_NAME]; /// process name (human-readable)
 
     char source_FUNCTION
