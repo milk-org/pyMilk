@@ -25,10 +25,13 @@ import typing as typ
 import os
 import time
 import glob
+import weakref
 
 _CORES = os.sched_getaffinity(0)
 from . import glib_loader_fix
 from pyMilk.FpsWrap import fps as CPTFPS, FPS_type, FPS_flags
+
+from pyMilk.interfacing.pinfo import ProcessInfo
 
 os.sched_setaffinity(0, _CORES)
 
@@ -54,6 +57,38 @@ class FPSDoesntExistError(FPSBaseError):
 
 class SmartFPSInitError(FPSBaseError):
     pass
+
+
+if typ.TYPE_CHECKING:
+    # TODO pack this in a stub file -- same for PINFO
+    from dataclasses import dataclass
+
+    @dataclass
+    class FPS_METADATA:
+        """Metadata exposed by the FPS_md nanobind class."""
+        name: str
+        description: str
+        kwarray: str
+        workdir: str
+        datadir: str
+        confdir: str
+        sourcefname: str
+        sourceline: int
+        pname: str
+        callprogname: str
+        NBnameindex: int
+        confpid: int
+        confpidstarttime: object
+        runpid: int
+        runpidstarttime: object
+        signal: int
+        confwaitus: int
+        status: int
+        NBparamMAX: int
+        msgpindex: typ.Sequence[int]
+        msgcode: typ.Sequence[int]
+        msgcnt: int
+        conferrcnt: int
 
 
 class FPS:
@@ -88,6 +123,9 @@ class FPS:
 
     def __init__(self, name: str) -> None:
         self.name = name
+        fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{name}.fps.shm'
+        if not os.path.isfile(fps_filepath):
+            raise FPSDoesntExistError(fps_filepath)
         try:
             self.fps = CPTFPS(name)
         except RuntimeError as exc:
@@ -97,6 +135,7 @@ class FPS:
         self.procinfo: ProcessInfoFps | None = None
         if 'procinfo.enabled' in self.key_types:
             self.procinfo = ProcessInfoFps(self)
+            self._pinfo_struct: ProcessInfo | None = None
 
     def __str__(self) -> str:
         # FIXME append tmux status
@@ -208,6 +247,23 @@ class FPS:
         fps_filepath = os.environ['MILK_SHM_DIR'] + f'/{self.name}.fps.shm'
         os.remove(fps_filepath)
 
+    @property
+    def md(self) -> FPS_METADATA:
+        return self.fps.md()
+
+    @property
+    def pinfo_struct(self) -> ProcessInfo:
+        run_pid = self.md.runpid
+
+        if self._pinfo_struct is not None and run_pid != self._pinfo_struct._pinfo.PID:
+            self._pinfo_struct._pinfo.close()  # TODO wrap function.
+            self._pinfo_struct = None
+
+        if self._pinfo_struct is None:
+            self._pinfo_struct = ProcessInfo(self.name, run_pid)
+
+        return self._pinfo_struct
+
 
 class FPSCollection():
     # TODO Non-regex FPSManager base class
@@ -246,8 +302,7 @@ class FPSManager(FPSCollection):
 
         non_matching_keys = set()
         for name, fpsobj in self.fps_cache.items():
-            md = fpsobj.fps.md()
-            kw_str = md.kwarray.strip(':')
+            kw_str = fpsobj.md.kwarray.strip(':')
             if (len(kw_str) == 0 or not any(
                     (fnmatch.fnmatch(kw, fps_keyword_glob)
                      for kw in kw_str.split(':')))):
@@ -463,7 +518,9 @@ class ProcessInfoFps:
     triggertimeout: float
 
     def __init__(self, parent_fps: FPS) -> None:
-        self._fps = parent_fps
+        self._fps = weakref.proxy(
+                parent_fps
+        )  # no cycle: FPS is freed (and disconnected) by refcount
 
         # create the properties
         for key in self.__annotations__:

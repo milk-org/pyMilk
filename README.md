@@ -31,6 +31,14 @@ cd pyMilk
 pip install -e .
 ```
 
+To also install the optional visualization dependencies (Qt and PyQtGraph for `shmImshow` and `shmPlot`, matplotlib for `shmTermshow`), use the `vis` extra:
+
+```
+pip install -e ".[vis]"
+```
+
+If you use a conda/mamba environment, you may prefer installing these from conda-forge instead (`mamba install pyqt pyqtgraph matplotlib`) to avoid mixing pip and conda Qt libraries.
+
 ### You have otherwise installed MILK/CACAO
 
 In case you need MILK/CACAO as well, beyond merely interacting with SHMs and FPSs with pyMilk in standalone mode, you may encounter some weirdness with name and library resolution.

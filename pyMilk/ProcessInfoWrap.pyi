@@ -1,6 +1,11 @@
 from __future__ import annotations
 import typing as typ
 
+import numpy as np
+import numpy.typing as npt
+
+PROCESSINFO_NBtimer: int
+
 class timespec:
     sec: int
     nsec: int
@@ -89,3 +94,13 @@ class processinfo:
     def description(self) -> str: ...
     @description.setter
     def description(self, value: str) -> None: ...
+
+    @property
+    def timerindex(self) -> int: ...
+    @timerindex.setter
+    def timerindex(self, value: int) -> None: ...
+
+    @property
+    def texecstart(self) -> npt.NDArray[np.float64]: ...
+    @property
+    def texecend(self) -> npt.NDArray[np.float64]: ...

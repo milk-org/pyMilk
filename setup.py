@@ -116,6 +116,11 @@ class CMakeBuildExt(build_ext):
         else:
             cmake_args += ['-DUSE_CUDA=OFF']
 
+        # NOCUDA=1 pip install -e .  -> force-disable CUDA
+        if os.environ.get('NOCUDA', '').lower() not in ('', '0', 'off',
+                                                        'false', 'no'):
+            cmake_args += ['-DNOCUDA=ON']
+
         # Warning, overriden in CMakeLists.txt anyway.
         cmake_args += ['-Dbuild_python_module=ON']
 

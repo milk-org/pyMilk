@@ -42,8 +42,6 @@ This is good for not ovethinking indexing in your code.
 from __future__ import annotations
 import typing as typ
 if typ.TYPE_CHECKING:
-    import cupy as cp
-
     import numpy.typing as npt
     import cupy.typing as cpt
 
@@ -51,10 +49,15 @@ if typ.TYPE_CHECKING:
     xp_ndarray = typ.TypeVar('xp_ndarray', npt.NDArray, cpNDArray)
 
 import numpy as np
-try:
-    from cupy import get_array_module
-except:
-    get_array_module = lambda x: np
+
+
+# Lazy import
+def lazy_get_array_module():
+    try:
+        from cupy import get_array_module
+    except:
+        get_array_module = lambda x: np
+    return get_array_module
 
 
 def image_encode(im: xp_ndarray, s: int) -> xp_ndarray:
@@ -96,7 +99,7 @@ def cube_front_image_encode(cube: xp_ndarray, s: int) -> xp_ndarray:
     elif s == 3:
         return cube[:, ::-1, ::-1]  # type: ignore
     else:
-        xp = get_array_module(cube)
+        xp = lazy_get_array_module()(cube)
         return cube_front_image_encode(xp.swapaxes(cube, 1, 2), s - 4)
 
 
@@ -122,7 +125,7 @@ def cube_back_image_encode(cube: xp_ndarray, s: int) -> xp_ndarray:
     elif s == 3:
         return cube[::-1, ::-1, :]  # type: ignore
     else:
-        xp = get_array_module(cube)
+        xp = lazy_get_array_module()(cube)
         return cube_back_image_encode(xp.swapaxes(cube, 0, 1), s - 4)
 
 
@@ -184,12 +187,12 @@ class Which3DState:
 
 
 def cube_roll_forw(cube: xp_ndarray) -> xp_ndarray:
-    xp = get_array_module(cube)
+    xp = lazy_get_array_module()(cube)
     return xp.moveaxis(cube, 2, 0)
 
 
 def cube_roll_back(cube: xp_ndarray) -> xp_ndarray:
-    xp = get_array_module(cube)
+    xp = lazy_get_array_module()(cube)
     return xp.moveaxis(cube, 0, 2)
 
 

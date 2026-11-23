@@ -388,7 +388,7 @@ Return:
             "CONFrunning",
             [](pyFps &cls) {
                 pid_t pid = cls->md->confpid;
-                if (pid_is_running(pid))
+                if (pid_is_running(pid) && cls->md->status & FUNCTION_PARAMETER_STRUCT_STATUS_CONF)
                 {
                     return 1;
                 }
@@ -442,10 +442,6 @@ Return:
 
         ;
     nb::class_<FUNCTION_PARAMETER_STRUCT_MD>(m, "FPS_md")
-        // .def(nb::init([]() {
-        //     return std::unique_ptr<FUNCTION_PARAMETER_STRUCT_MD>(new
-        //     FUNCTION_PARAMETER_STRUCT_MD());
-        // }))
         .def_ro("name", &FUNCTION_PARAMETER_STRUCT_MD::name)
         .def_ro("description", &FUNCTION_PARAMETER_STRUCT_MD::description)
         .def_ro("kwarray", &FUNCTION_PARAMETER_STRUCT_MD::keywordarray)
